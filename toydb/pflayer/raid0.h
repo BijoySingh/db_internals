@@ -6,12 +6,19 @@
 #define BACKUP_THRESHOLD 750
 #define BACKUP_LOWER_THRESHOLD 500
 
-struct WriteEntry{
+
+/****************************************************
+*****************************************************
+	DEBUG START
+*****************************************************
+*****************************************************/
+
+typedef struct WriteEntry{
 	int pagenum;
 	int file_descriptor;
-};
+} WriteEntry;
 
-struct RAID0
+typedef struct RAID0
 {
 	//Even Buffer
 	struct WriteEntry buffer_even[MAX_ARRAY];	
@@ -27,23 +34,30 @@ struct RAID0
 
 } RAID0; //Raid0SubController
 
+
+/****************************************************
+*****************************************************
+	DEBUG STOP
+*****************************************************
+*****************************************************/
+
 RAID0 Raid0SubController;
 
 void R0_constructor(){
 	int i = 0;	
 	for (;i<MAX_ARRAY;i++){
-		Raid0SubController.buffer_even[i].page_num = -1;
-		Raid0SubController.buffer_odd[i].page_num = -1;
+		Raid0SubController.buffer_even[i].pagenum = -1;
+		Raid0SubController.buffer_odd[i].pagenum = -1;
 		Raid0SubController.buffer_even[i].file_descriptor = -1;
 		Raid0SubController.buffer_odd[i].file_descriptor = -1;
 	}
-	Raid0SubController.odd_count = 0;
-	Raid0SubController.even_count = 0;
-	Raid0SubController.even_start = 0;
-	Raid0SubController.odd_start = 0;
+	Raid0SubController.buffer_odd_count = 0;
+	Raid0SubController.buffer_even_count = 0;
+	Raid0SubController.buffer_even_start = 0;
+	Raid0SubController.buffer_odd_start = 0;
 
-	Raid0SubController.even_priority.page_num = -1;
-	Raid0SubController.odd_priority.page_num = -1;
+	Raid0SubController.even_priority.pagenum = -1;
+	Raid0SubController.odd_priority.pagenum = -1;
 	Raid0SubController.even_priority.file_descriptor = -1;
 	Raid0SubController.odd_priority.file_descriptor = -1;
 }
@@ -110,7 +124,7 @@ void R0_Step(){
 			//backup the first
 			R0_Backup(bf_even.file_descriptor,bf_even.pagenum);
 			//send message to controller
-			DiskController.confirm_backup(bf_even.file_descriptor,bf_even.pagenum);
+			confirm_backup(bf_even.file_descriptor,bf_even.pagenum);
 			//update variables
 			Raid0SubController.buffer_even_start = (Raid0SubController.buffer_even_start + 1) % MAX_ARRAY;
 			Raid0SubController.buffer_even_count -= 1;
@@ -130,7 +144,7 @@ void R0_Step(){
 			//backup the first
 			R0_Backup(bf_odd.file_descriptor,bf_odd.pagenum);
 			//send message to controller
-			DiskController.confirm_backup(bf_odd.file_descriptor,bf_odd.pagenum);
+			confirm_backup(bf_odd.file_descriptor,bf_odd.pagenum);
 			//update variables
 			Raid0SubController.buffer_odd_start = (Raid0SubController.buffer_odd_start + 1) % MAX_ARRAY;
 			Raid0SubController.buffer_odd_count -= 1;

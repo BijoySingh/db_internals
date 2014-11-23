@@ -13,22 +13,29 @@
 
 // SystemSimulator
 
+/****************************************************
+*****************************************************
+	DEBUG START
+*****************************************************
+*****************************************************/
+
+
 /****************************************************	
 	EACH BUFFER LOCATION CAN STORE THIS DATA
 ****************************************************/
 
-struct BufferEntry{
+typedef struct BufferEntry{
 	int id;
 	int pagenum;
 	int read_or_write;
 	int file_descriptor;
-};
+} BufferEntry;
 
 /****************************************************
 	RAID01 SUB CONTROLLER CLASS
 ****************************************************/
 
-struct RAID01
+typedef struct RAID01
 {
 	//Even Buffer
 	struct BufferEntry buffer_even[MAX_ARRAY];	
@@ -38,10 +45,36 @@ struct RAID01
 	//Odd Buffer
 	struct BufferEntry buffer_odd[MAX_ARRAY];	
 	int buffer_odd_count; int buffer_odd_start;
-	bool buffer_even_backup_mode; // = true;
+	bool buffer_odd_backup_mode; // = true;
 } RAID01;
 
 RAID01 Raid01SubController;
+void R01_Constructor(){
+	int i;
+	for(i =0;i<MAX_ARRAY;i++){
+		Raid01SubController.buffer_even[i].id=-1;
+		Raid01SubController.buffer_even[i].pagenum=-1;
+		Raid01SubController.buffer_even[i].file_descriptor=-1;
+		Raid01SubController.buffer_even[i].read_or_write=-1;
+		Raid01SubController.buffer_odd[i].id=-1;
+		Raid01SubController.buffer_odd[i].pagenum=-1;
+		Raid01SubController.buffer_odd[i].file_descriptor=-1;
+		Raid01SubController.buffer_odd[i].read_or_write=-1;
+	}
+	Raid01SubController.buffer_even_count = 0;
+	Raid01SubController.buffer_odd_count = 0;
+	Raid01SubController.buffer_even_start = 0;
+	Raid01SubController.buffer_odd_start = 0;
+	Raid01SubController.buffer_even_backup_mode = true;
+	Raid01SubController.buffer_odd_backup_mode = true;
+}
+
+
+/****************************************************
+*****************************************************
+	DEBUG STOP
+*****************************************************
+*****************************************************/
 
 /****************************************************
 INSERTING ENTRIES INTO BUFFERS
@@ -89,10 +122,10 @@ void R01_Input(int id,int read_or_write,int fd,int pagenum){
 
 void R01_PerformBackup(int even_or_odd,int disk){
 	printf("RAID 01 : Granted Request To Backup From Disk %d\n",disk);
-	DiskController.request_backup(even_or_odd,disk);
+	request_backup(even_or_odd,disk);
 }
 void R01_PerformForcedBackup(int even_or_odd,int file,int page){
-	DiskController.request_forced_backup(even_or_odd,file,page);
+	request_forced_backup(even_or_odd,file,page);
 }
 
 /****************************************************
@@ -121,7 +154,7 @@ void R01_UseBuffer(int even_or_odd){
 ****************************************************/
 
 void R01_PerformInstruction(id,even_or_odd,write_or_read,disk_number){
-	DiskController.instruction_executed(id);
+	instruction_executed(id);
 	if(write_or_read == 0)
 		printf("RAID 01 : Granted Request To Read From Disk %d\n",disk_number);
 	if(write_or_read == 1)
@@ -140,7 +173,7 @@ void R01_Step(){
 		//Perform Read
 		R01_PerformInstruction(bf_even.id,0,RAID_READ,DISK_00);
 		
-		if(!buffer_even_backup_mode){
+		if(!Raid01SubController.buffer_even_backup_mode){
 			//CANT BACKUP
 			BufferEntry bf_even_next = Raid01SubController.buffer_even[(Raid01SubController.buffer_even_start+1)%MAX_ARRAY];
 			if(bf_even_next.read_or_write == RAID_READ){
@@ -177,12 +210,13 @@ void R01_Step(){
 	}
 
 	//ODD
+	BufferEntry bf_odd = Raid01SubController.buffer_odd[Raid01SubController.buffer_odd_start];
 		if(bf_odd.read_or_write == RAID_READ){
 		//FIRST INSTRUCTION IS READ
 		//Perform Read
 		R01_PerformInstruction(bf_odd.id,1,RAID_READ,DISK_01);
 		
-		if(!buffer_odd_backup_mode){
+		if(!Raid01SubController.buffer_odd_backup_mode){
 			//CANT BACKUP
 			BufferEntry bf_odd_next = Raid01SubController.buffer_odd[(Raid01SubController.buffer_odd_start+1)%MAX_ARRAY];
 			if(bf_odd_next.read_or_write == RAID_READ){
@@ -215,8 +249,8 @@ void R01_Step(){
 	}
 	else{
 		//Send 2 backups
-		R01_PerformBackup(1);
-		R01_PerformBackup(1);
+		R01_PerformBackup(1,DISK_01);
+		R01_PerformBackup(1,DISK_11);
 	}
 
 }

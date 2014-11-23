@@ -4,7 +4,7 @@
 
 typedef struct input {
 	int fd;
-	char op_name[10];
+	char* op_name;
 	int pagenum;
 	int resultpagenum;
 	int* resultpagepointer;
@@ -18,6 +18,7 @@ typedef struct file {
 	int pages[2];
 	int backed_up[2];
 	int buffer[2];
+	char* fname;
 } file;
 
 typedef struct System_sim {
