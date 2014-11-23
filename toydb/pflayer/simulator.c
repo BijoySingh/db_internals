@@ -77,12 +77,19 @@ void destroy(char* fname) {
 }
 
 void increment(int fd, int pagenum) {
-	DiskController.file_structure[fd].pages[pagenum % 2] = max(DiskController.file_structure[fd].pages[pagenum % 2], pagenum);
+	DiskController.file_structure[fd].pages[pagenum % 2] = DiskController.file_structure[fd].pages[pagenum % 2] < pagenum ? pagenum : DiskController.file_structure[fd].pages[pagenum % 2];
 }
 
-//void dispose(int fd, int pagenum) {
-//
-//}
+void dispose(int fd, int pagenum) {
+					//Not sure if needed
+}
+
+void file_increment(int parity) {
+	int temp = DiskController.curr_file[parity];
+
+	while (!(DiskController.file_structure[temp].valid))
+		DiskController.curr_file[parity]++;
+}
 
 void request_backup(int parity, int disk) {
 	DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity] += 2;
@@ -106,13 +113,6 @@ void request_forced_backup(int parity, int fd, int pagenum) {
 	//priority 1 curr_file == fd && curr_file.backed_up < fd && curr_file.buffer > fd
 	//priority 2
 	//if (curr_file < fd || (curr_file == fd && curr_file.backed_up < fd && curr_file.buffer > fd)
-}
-
-void file_increment(int parity) {
-	int temp = DiskController.curr_file[parity];
-
-	while (!(DiskController.file_structure[temp].valid))
-		DiskController.curr_file[parity]++;
 }
 
 void confirm_backup(int fd, int pagenum) {
