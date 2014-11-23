@@ -1,5 +1,6 @@
-#ifndef HEADER_H
-#define HEADER_H
+#ifndef SIMULATOR_H
+#define SIMULATOR_H
+#include<stdbool.h>
 
 typedef struct input {
 	int fd;
@@ -10,21 +11,24 @@ typedef struct input {
 	int count;
 	char* data;
 	char** pagebuf;
-};
+} input;
 
 typedef struct file {
 	bool valid;
 	int pages[2];
 	int backed_up[2];
 	int buffer[2];
-};
+} file;
+
 typedef struct System_sim {
 	int max_id;
 	input list[1000];
 	file file_structure[1000];
 	int curr_file[2];
 	//int backup_file[2];
-} DiskController;
+} System_sim; 
+
+System_sim DiskController;
 
 void call(int id, int fd, int pagenum, int read_or_write);
 void instruction_executed(int id);

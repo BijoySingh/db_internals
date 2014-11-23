@@ -7,8 +7,8 @@
 #define BACKUP_LOWER_THRESHOLD 500
 
 struct WriteEntry{
-	int pagenum = -1;
-	int file_descriptor = -1;
+	int pagenum;
+	int file_descriptor;
 };
 
 struct RAID0
@@ -25,7 +25,28 @@ struct RAID0
 	int buffer_odd_start;
 	WriteEntry odd_priority;
 
-} Raid0SubController; //Raid0SubController
+} RAID0; //Raid0SubController
+
+RAID0 Raid0SubController;
+
+void R0_constructor(){
+	int i = 0;	
+	for (;i<MAX_ARRAY;i++){
+		Raid0SubController.buffer_even[i].page_num = -1;
+		Raid0SubController.buffer_odd[i].page_num = -1;
+		Raid0SubController.buffer_even[i].file_descriptor = -1;
+		Raid0SubController.buffer_odd[i].file_descriptor = -1;
+	}
+	Raid0SubController.odd_count = 0;
+	Raid0SubController.even_count = 0;
+	Raid0SubController.even_start = 0;
+	Raid0SubController.odd_start = 0;
+
+	Raid0SubController.even_priority.page_num = -1;
+	Raid0SubController.odd_priority.page_num = -1;
+	Raid0SubController.even_priority.file_descriptor = -1;
+	Raid0SubController.odd_priority.file_descriptor = -1;
+}
 
 void R0_AddEvenEntry(int fd,int pagenum){
 	WriteEntry bfe;

@@ -9,6 +9,8 @@
 
 main()
 {
+
+
 	int error;
 	int i;
 	int pagenum, *buf;

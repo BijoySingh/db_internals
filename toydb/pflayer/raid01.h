@@ -18,10 +18,10 @@
 ****************************************************/
 
 struct BufferEntry{
-	int id = -1;
-	int pagenum = -1;
-	int read_or_write = -1;
-	int file_descriptor = -1;
+	int id;
+	int pagenum;
+	int read_or_write;
+	int file_descriptor;
 };
 
 /****************************************************
@@ -33,14 +33,15 @@ struct RAID01
 	//Even Buffer
 	struct BufferEntry buffer_even[MAX_ARRAY];	
 	int buffer_even_count; int buffer_even_start;
-	bool buffer_even_backup_mode = true;
+	bool buffer_even_backup_mode; // = true;
 
 	//Odd Buffer
 	struct BufferEntry buffer_odd[MAX_ARRAY];	
 	int buffer_odd_count; int buffer_odd_start;
-	bool buffer_even_backup_mode = true;
-} Raid01SubController;
+	bool buffer_even_backup_mode; // = true;
+} RAID01;
 
+RAID01 Raid01SubController;
 
 /****************************************************
 INSERTING ENTRIES INTO BUFFERS

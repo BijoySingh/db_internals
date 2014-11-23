@@ -110,7 +110,7 @@ RETURN VALUE:
 {
 int error;
 	/* Inform simulator about operation */
-	DiskController.call(fd, pagenum, 0);
+	call(id, fd, pagenum, 0);
 
 	/* seek to the appropriate place */
 	if ((error=lseek(PFftab[fd].unixfd,pagenum*sizeof(PFfpage)+PF_HDR_SIZE,
@@ -151,7 +151,7 @@ RETURN VALUE:
 {
 int error;
 	/* Inform simulator about operation */
-	DiskController.call(fd, pagenum, 1);
+	call(id, fd, pagenum, 1);
 	/* seek to the right place */
 	if ((error=lseek(PFftab[fd].unixfd,pagenum*sizeof(PFfpage)+PF_HDR_SIZE,
 				L_SET)) == -1){
@@ -242,7 +242,7 @@ int error;
 		return(PFerrno);
 	}
 
-	DiskController.create(fname, fd);
+	create(fname, fd);
 	return(PFE_OK);
 }
 
@@ -275,7 +275,7 @@ int error;
 		PFerrno = PFE_UNIX;
 		return(PFerrno);
 	}
-	DiskController.destroy(fname);
+	destroy(fname);
 	/* success */
 	return(PFE_OK);
 }
@@ -620,7 +620,7 @@ int error;
 
 	/* set return value */
 	*pagebuf = fpage->pagebuf;
-	DiskController.increment(fd, pagenum);
+	increment(fd, *pagenum);
 	return(PFE_OK);
 }
 
@@ -762,7 +762,7 @@ RETURN VALUE: none
 RAIDPF_CloseFile(fd)
 int fd;
 {
-	DiskController.map("close_file", fd, -1);
+	map("close_file", fd, -1);
 	return PF_CloseFile(fd);
 }
 
@@ -771,9 +771,9 @@ int fd;
 int *pagenum;
 char **pagebuf;
 {
-	int id = DiskController.map("get_first_page", fd, -1);
+	int id = map("get_first_page", fd, -1);
 	PF_GetFirstPage(fd, pagenum, pagebuf);
-	DiskController.result(id, pagenum, pagebuf, *pagenum, *pagebuf);
+	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
 	*pagenum = -1;
 	*pagebuf = NULL;
 	return;
@@ -784,9 +784,9 @@ int fd;
 int pagenum;
 char **pagebuf;
 {
-	int id = DiskController.map("get_this_page", fd, pagenum)
-	PF_GetThisPate(fd, pagenum, pagebuf);
-	DiskController.result(id, NULL, NULL, -1, *pagebuf);
+	int id = map("get_this_page", fd, pagenum);
+	PF_GetThisPage(fd, pagenum, pagebuf);
+	result(id, NULL, NULL, -1, *pagebuf);
 	*pagebuf = NULL;
 	return;
 }
@@ -796,9 +796,9 @@ int fd;
 int *pagenum;
 char **pagebuf;
 {
-	int id = DiskController.map("alloc_page", fd, -1);
+	int id = map("alloc_page", fd, -1);
 	PF_AllocPage(fd, pagenum, pagebuf);
-	DiskController.result(id, pagenum, pagebuf, *pagenum, *pagebuf);
+	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
 	*pagenum = -1;
 	*pagebuf = NULL;
 	return;
@@ -808,6 +808,6 @@ RAIDPF_DisposePage(fd,pagenum)
 int fd;
 int pagenum;
 {
-	DiskController.map("dispose_page", fd, pagenum);
+	map("dispose_page", fd, pagenum);
 	return PF_DisposePage(fd, pagenum);
 }
