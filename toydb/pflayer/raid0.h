@@ -89,7 +89,7 @@ void R0_Step(){
 			//backup the first
 			R0_Backup(bf_even.file_descriptor,bf_even.pagenum);
 			//send message to controller
-			DiskController.backed_up(bf_even.file_descriptor,bf_even.pagenum);
+			DiskController.confirm_backup(bf_even.file_descriptor,bf_even.pagenum);
 			//update variables
 			Raid0SubController.buffer_even_start = (Raid0SubController.buffer_even_start + 1) % MAX_ARRAY;
 			Raid0SubController.buffer_even_count -= 1;
@@ -109,7 +109,7 @@ void R0_Step(){
 			//backup the first
 			R0_Backup(bf_odd.file_descriptor,bf_odd.pagenum);
 			//send message to controller
-			DiskController.backed_up(bf_odd.file_descriptor,bf_odd.pagenum);
+			DiskController.confirm_backup(bf_odd.file_descriptor,bf_odd.pagenum);
 			//update variables
 			Raid0SubController.buffer_odd_start = (Raid0SubController.buffer_odd_start + 1) % MAX_ARRAY;
 			Raid0SubController.buffer_odd_count -= 1;

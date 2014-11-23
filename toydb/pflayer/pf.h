@@ -45,15 +45,15 @@ int PF_DestroyFile(char *fname);
 
 int PF_OpenFile(char *fname);
 
-int PF_CloseFile(int fd);
+int RAIDPF_CloseFile(int fd);
 
-int PF_GetFirstPage(int fd, int *pagenum, char **pagebuf);
+int RAIDPF_GetFirstPage(int fd, int *pagenum, char **pagebuf);
 
-int PF_GetThisPage(int fd, int pagenum,char **pagebuf);
+int RAIDPF_GetThisPage(int fd, int pagenum,char **pagebuf);
 
-int PF_AllocPage(int fd, int *pagenum,char **pagebuf);
+int RAIDPF_AllocPage(int fd, int *pagenum,char **pagebuf);
 
-int PF_DisposePage(int fd, int pagenum);
+int RAIDPF_DisposePage(int fd, int pagenum);
 
 int PF_UnfixPage(int fd, int pagenum, int dirty);
 

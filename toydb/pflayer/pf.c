@@ -5,6 +5,8 @@
 #include <sys/file.h>
 #include "pf.h"
 #include "pftypes.h"
+#include "simulator.h"
+//#include "testraid.h"
 
 /* To keep system V and PC users happy */
 #ifndef L_SET
@@ -89,7 +91,8 @@ int i;
 	return(-1);
 }
 
-PFreadfcn(fd,pagenum,buf)
+PFreadfcn(id, fd, pagenum, buf)
+int id; /* operation descriptor */
 int fd;	/* file descriptor */
 int pagenum; /* page number */
 PFfpage *buf;
@@ -106,6 +109,8 @@ RETURN VALUE:
 *****************************************************************************/
 {
 int error;
+	/* Inform simulator about operation */
+	DiskController.call(fd, pagenum, 0);
 
 	/* seek to the appropriate place */
 	if ((error=lseek(PFftab[fd].unixfd,pagenum*sizeof(PFfpage)+PF_HDR_SIZE,
@@ -126,7 +131,8 @@ int error;
 	return(PFE_OK);
 }
 
-PFwritefcn(fd,pagenum,buf)
+PFwritefcn(id,fd,pagenum,buf)
+int id; /* operation descriptor */
 int fd;		/* file descriptor */
 int pagenum;	/* page to read */
 PFfpage *buf;	/* buffer where to read the page */
@@ -144,7 +150,8 @@ RETURN VALUE:
 *****************************************************************************/
 {
 int error;
-
+	/* Inform simulator about operation */
+	DiskController.call(fd, pagenum, 1);
 	/* seek to the right place */
 	if ((error=lseek(PFftab[fd].unixfd,pagenum*sizeof(PFfpage)+PF_HDR_SIZE,
 				L_SET)) == -1){
@@ -235,6 +242,7 @@ int error;
 		return(PFerrno);
 	}
 
+	DiskController.create(fname, fd);
 	return(PFE_OK);
 }
 
@@ -267,7 +275,7 @@ int error;
 		PFerrno = PFE_UNIX;
 		return(PFerrno);
 	}
-
+	DiskController.destroy(fname);
 	/* success */
 	return(PFE_OK);
 }
@@ -354,7 +362,7 @@ RETURN VALUE:
 *****************************************************************************/
 {
 int error;
-
+	
 	if (PFinvalidFd(fd)){
 		/* invalid file descriptor */
 		PFerrno = PFE_FD;
@@ -402,10 +410,11 @@ int error;
 }
 
 
-PF_GetFirstPage(fd,pagenum,pagebuf)
+PF_GetFirstPage(fd,pagenum,pagebuf,id)
 int fd;	/* file descriptor */
 int *pagenum;	/* page number of first page */
 char **pagebuf;	/* pointer to the pointer to buffer */
+int *id; /* id assigned to this operation */
 /****************************************************************************
 SPECIFICATIONS:
 	Read the first page into memory and set *pagebuf to point to it.
@@ -422,9 +431,8 @@ RETURN VALUE:
 
 *****************************************************************************/
 {
-
 	*pagenum = -1;
-	return(PF_GetNextPage(fd,pagenum,pagebuf));
+	return(PF_GetNextPage(fd, pagenum, pagebuf));
 }
 
 
@@ -612,7 +620,7 @@ int error;
 
 	/* set return value */
 	*pagebuf = fpage->pagebuf;
-	
+	DiskController.increment(fd, pagenum);
 	return(PFE_OK);
 }
 
@@ -665,7 +673,9 @@ int error;
 	PFftab[fd].hdrchanged = TRUE;
 
 	/* unfix this page */
-	return(PFbufUnfix(fd,pagenum,TRUE));
+	if ((error = PFbufUnfix(fd, pagenum, TRUE)) == PFE_OK)
+		dispose(fd, pagenum);
+	return error;
 }
 
 PF_UnfixPage(fd,pagenum,dirty)
@@ -745,4 +755,59 @@ RETURN VALUE: none
 		perror(" ");
 	else	fprintf(stderr,"\n");
 
+}
+
+
+
+RAIDPF_CloseFile(fd)
+int fd;
+{
+	DiskController.map("close_file", fd, -1);
+	return PF_CloseFile(fd);
+}
+
+RAIDPF_GetFirstPage(fd,pagenum,pagebuf)
+int fd;
+int *pagenum;
+char **pagebuf;
+{
+	int id = DiskController.map("get_first_page", fd, -1);
+	PF_GetFirstPage(fd, pagenum, pagebuf);
+	DiskController.result(id, pagenum, pagebuf, *pagenum, *pagebuf);
+	*pagenum = -1;
+	*pagebuf = NULL;
+	return;
+}
+
+RAIDPF_GetThisPage(fd,pagenum,pagebuf)
+int fd;
+int pagenum;
+char **pagebuf;
+{
+	int id = DiskController.map("get_this_page", fd, pagenum)
+	PF_GetThisPate(fd, pagenum, pagebuf);
+	DiskController.result(id, NULL, NULL, -1, *pagebuf);
+	*pagebuf = NULL;
+	return;
+}
+
+RAIDPF_AllocPage(fd,pagenum,pagebuf)
+int fd;
+int *pagenum;
+char **pagebuf;
+{
+	int id = DiskController.map("alloc_page", fd, -1);
+	PF_AllocPage(fd, pagenum, pagebuf);
+	DiskController.result(id, pagenum, pagebuf, *pagenum, *pagebuf);
+	*pagenum = -1;
+	*pagebuf = NULL;
+	return;
+}
+
+RAIDPF_DisposePage(fd,pagenum)
+int fd;
+int pagenum;
+{
+	DiskController.map("dispose_page", fd, pagenum);
+	return PF_DisposePage(fd, pagenum);
 }
