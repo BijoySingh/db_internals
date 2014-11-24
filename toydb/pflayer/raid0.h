@@ -5,13 +5,6 @@
 #define BACKUP_THRESHOLD 750
 #define BACKUP_LOWER_THRESHOLD 500
 
-
-/****************************************************
-*****************************************************
-	DEBUG START
-*****************************************************
-*****************************************************/
-
 typedef struct WriteEntry{
 	int pagenum;
 	int file_descriptor;
@@ -33,16 +26,9 @@ typedef struct RAID0
 
 } RAID0; //Raid0SubController
 
-
-/****************************************************
-*****************************************************
-	DEBUG STOP
-*****************************************************
-*****************************************************/
-
 RAID0 Raid0SubController;
 
-void R0_constructor(){
+void R0_Constructor(){
 	int i = 0;	
 	for (;i<MAX_ARRAY;i++){
 		Raid0SubController.buffer_even[i].pagenum = -1;
@@ -150,4 +136,7 @@ void R0_Step(){
 			Raid0SubController.buffer_odd_count -= 1;
 		}
 	}	
+
+	return Raid0SubController.buffer_odd_count + Raid0SubController.buffer_even_count;
+
 }

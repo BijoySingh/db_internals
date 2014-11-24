@@ -20,6 +20,8 @@ testhash.o: $(HDR)
 
 testpf.o: $(HDR)
 testraid.o: $(HDR)
+testbackup.o: $(HDR)
+testfailure.o: $(HDR)
 
 lint: 
 	lint $(SRC)
@@ -28,3 +30,10 @@ install: pflayer.o
 
 testraid: testraid.o pflayer.o
 	cc -o testraid testraid.o pflayer.o
+
+testbackup: testbackup.o pflayer.o
+	cc -o testbackup testbackup.o pflayer.o
+
+testfailure: testfailure.o pflayer.o
+	cc -o testfailure testfailure.o pflayer.o
+

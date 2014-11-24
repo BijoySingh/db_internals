@@ -10,17 +10,7 @@
 #define DISK_10 2
 #define DISK_11 3
 
-FILE *log_file;
 //FORMAT: RAID,INSTRUCTION(R,W,BR),FD,PAGE,ODD_EVEN,DISK
-
-// SystemSimulator
-
-/****************************************************
-*****************************************************
-	DEBUG START
-*****************************************************
-*****************************************************/
-
 
 /****************************************************	
 	EACH BUFFER LOCATION CAN STORE THIS DATA
@@ -58,7 +48,6 @@ void R01_Destructor(){
 	fclose(log_file);
 }
 void R01_Constructor(){
-	log_file = fopen("raid_log.txt","w");
 	int i;
 	for(i =0;i<MAX_ARRAY;i++){
 		Raid01SubController.buffer_even[i].id=-1;
@@ -86,14 +75,9 @@ void R01_ActivateBackup(){
 }
 
 void R01_BackupComplete(){
+	printf("Backup Complete Requested\n");
 	Raid01SubController.backup_complete = true;	
 }
-
-/****************************************************
-*****************************************************
-	DEBUG STOP
-*****************************************************
-*****************************************************/
 
 /****************************************************
 INSERTING ENTRIES INTO BUFFERS
@@ -172,7 +156,7 @@ void R01_UseBuffer(int even_or_odd){
 	}
 }
 /****************************************************
-	PERFORM AN INSTRUTION ON DISK
+	PERFORM AN INSTRUCTION ON DISK
 ****************************************************/
 
 void R01_PerformInstruction(BufferEntry buffer_entry,int even_or_odd,
@@ -198,8 +182,23 @@ void R01_PerformInstruction(BufferEntry buffer_entry,int even_or_odd,
 
 void R01_Step(){
 	fprintf(log_file,"STEP\n");
-	printf("Stepped\n");
 	//EVEN
+
+	/**************************************************
+		ALGORITHM
+		-> count != 0 check
+		-> if instruction is READ
+		  -> Perform the current instruction
+		  -> if I cant backup(not yet backing up/backup full/fully backed up)
+		  	->if next is read, perform read
+		  	->else backup anyways if I can(not fully backed up backup)
+		  -> else backup
+		-> if write, write and do forced backup
+		-> else do double backup	
+	***************************************************/
+
+	if(Raid01SubController.buffer_even_count != 0){
+
 	BufferEntry bf_even = Raid01SubController.buffer_even[Raid01SubController.buffer_even_start];
 	if(bf_even.read_or_write == RAID_READ){
 		//FIRST INSTRUCTION IS READ
@@ -213,31 +212,25 @@ void R01_Step(){
 				//NEXT INSTRUCTION IS READ
 				//Perform Read
 				R01_PerformInstruction(bf_even_next,0,RAID_READ,DISK_10);
-				//reset variables
-				R01_UseBuffer(0);
 				R01_UseBuffer(0);
 			}else if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
 				//NEXT INSTRUCION CANT BE READ
 				//do even backup from here
-				
-				R01_PerformBackup(0,DISK_10);
-				//reset variables
-				R01_UseBuffer(0);			
+				R01_PerformBackup(0,DISK_10);							
 			}
 		}else{
 			//do even backup from here
 			if(!Raid01SubController.backup_complete)
 				R01_PerformBackup(0,DISK_10);
-			//Reseting variables
-			R01_UseBuffer(0);
 		}
+		//Reseting variables
+		R01_UseBuffer(0);
 	}else if(bf_even.read_or_write == RAID_WRITE){
 		//Perform Write
 		R01_PerformInstruction(bf_even,0,RAID_WRITE,DISK_00);
 		//request to backup this data
 		if(Raid01SubController.backup_disk_attached)
 			R01_PerformForcedBackup(0,bf_even.file_descriptor,bf_even.pagenum);
-		
 		//Reseting variables
 		R01_UseBuffer(0);
 	}else{
@@ -246,9 +239,10 @@ void R01_Step(){
 			R01_PerformBackup(0,DISK_00);
 			R01_PerformBackup(0,DISK_10);
 		}
-	}
+	}}
 
 	//ODD
+	if(Raid01SubController.buffer_odd_count != 0){
 	BufferEntry bf_odd = Raid01SubController.buffer_odd[Raid01SubController.buffer_odd_start];
 		if(bf_odd.read_or_write == RAID_READ){
 		//FIRST INSTRUCTION IS READ
@@ -264,27 +258,23 @@ void R01_Step(){
 				R01_PerformInstruction(bf_odd_next,0,RAID_READ,DISK_11);
 				//reset variables
 				R01_UseBuffer(1);
-				R01_UseBuffer(1);
 			}else if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
 				//NEXT INSTRUCION CANT BE READ
 				//do odd backup from here
 				R01_PerformBackup(1,DISK_11);
-				//reset variables
-				R01_UseBuffer(1);			
 			}
 		}else{
 			//do odd backup from here
 			if(!Raid01SubController.backup_complete)
 				R01_PerformBackup(1,DISK_11);
-			//Reseting variables
-			R01_UseBuffer(1);
 		}
+		R01_UseBuffer(1);
 	}else if(bf_odd.read_or_write == RAID_WRITE){
 		//Perform Write
 		R01_PerformInstruction(bf_odd,1,RAID_WRITE,DISK_01);
 		//request to backup this data
 		if(Raid01SubController.backup_disk_attached){
-			R01_PerformForcedBackup(0,bf_odd.file_descriptor,bf_odd.pagenum);
+			R01_PerformForcedBackup(1,bf_odd.file_descriptor,bf_odd.pagenum);
 		}
 		//Reseting variables
 		R01_UseBuffer(1);
@@ -295,7 +285,7 @@ void R01_Step(){
 			R01_PerformBackup(1,DISK_01);
 			R01_PerformBackup(1,DISK_11);
 		}
-	}
-
+	}}
+	return Raid01SubController.buffer_odd_count + Raid01SubController.buffer_even_count;
 }
 

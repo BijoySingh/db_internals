@@ -38,6 +38,9 @@ main()
 	writefile(FILE2);
 	readfile(FILE2);
 
+	printf("ACTIVATE BACKUP\n");
+	// R01_ActivateBackup();
+
 	int fd_1,fd_2;
 	/* open both files */
 	fd1=PF_OpenFile(FILE1);
