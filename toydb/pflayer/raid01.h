@@ -2,7 +2,6 @@
 
 #define RAID_READ 0
 #define RAID_WRITE 1
-#define MAX_ARRAY 1000
 #define BACKUP_THRESHOLD 750
 #define BACKUP_LOWER_THRESHOLD 500
 
@@ -41,6 +40,8 @@ typedef struct BufferEntry{
 typedef struct RAID01
 {
 	bool backup_disk_attached;
+	bool backup_complete;
+
 	//Even Buffer
 	struct BufferEntry buffer_even[MAX_ARRAY];	
 	int buffer_even_count; int buffer_even_start;
@@ -77,10 +78,15 @@ void R01_Constructor(){
 	Raid01SubController.buffer_odd_backup_mode = true;
 
 	Raid01SubController.backup_disk_attached = false;
+	Raid01SubController.backup_complete = false;
 }
 
 void R01_ActivateBackup(){
 	Raid01SubController.backup_disk_attached = true;
+}
+
+void R01_BackupComplete(){
+	Raid01SubController.backup_complete = true;	
 }
 
 /****************************************************
@@ -191,6 +197,8 @@ void R01_PerformInstruction(BufferEntry buffer_entry,int even_or_odd,
 ****************************************************/
 
 void R01_Step(){
+	fprintf(log_file,"STEP\n");
+	printf("Stepped\n");
 	//EVEN
 	BufferEntry bf_even = Raid01SubController.buffer_even[Raid01SubController.buffer_even_start];
 	if(bf_even.read_or_write == RAID_READ){
@@ -198,7 +206,7 @@ void R01_Step(){
 		//Perform Read
 		R01_PerformInstruction(bf_even,0,RAID_READ,DISK_00);
 		
-		if(!Raid01SubController.buffer_even_backup_mode || !Raid01SubController.backup_disk_attached){
+		if(!Raid01SubController.buffer_even_backup_mode || !Raid01SubController.backup_disk_attached || Raid01SubController.backup_complete){
 			//CANT BACKUP
 			BufferEntry bf_even_next = Raid01SubController.buffer_even[(Raid01SubController.buffer_even_start+1)%MAX_ARRAY];
 			if(bf_even_next.read_or_write == RAID_READ){
@@ -208,7 +216,7 @@ void R01_Step(){
 				//reset variables
 				R01_UseBuffer(0);
 				R01_UseBuffer(0);
-			}else if(Raid01SubController.backup_disk_attached){
+			}else if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
 				//NEXT INSTRUCION CANT BE READ
 				//do even backup from here
 				
@@ -218,7 +226,8 @@ void R01_Step(){
 			}
 		}else{
 			//do even backup from here
-			R01_PerformBackup(0,DISK_10);
+			if(!Raid01SubController.backup_complete)
+				R01_PerformBackup(0,DISK_10);
 			//Reseting variables
 			R01_UseBuffer(0);
 		}
@@ -233,7 +242,7 @@ void R01_Step(){
 		R01_UseBuffer(0);
 	}else{
 		//Send 2 backups
-		if(Raid01SubController.backup_disk_attached){
+		if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
 			R01_PerformBackup(0,DISK_00);
 			R01_PerformBackup(0,DISK_10);
 		}
@@ -246,7 +255,7 @@ void R01_Step(){
 		//Perform Read
 		R01_PerformInstruction(bf_odd,1,RAID_READ,DISK_01);
 		
-		if(!Raid01SubController.buffer_odd_backup_mode || !Raid01SubController.backup_disk_attached){
+		if(!Raid01SubController.buffer_odd_backup_mode || !Raid01SubController.backup_disk_attached || Raid01SubController.backup_complete){
 			//CANT BACKUP
 			BufferEntry bf_odd_next = Raid01SubController.buffer_odd[(Raid01SubController.buffer_odd_start+1)%MAX_ARRAY];
 			if(bf_odd_next.read_or_write == RAID_READ){
@@ -256,7 +265,7 @@ void R01_Step(){
 				//reset variables
 				R01_UseBuffer(1);
 				R01_UseBuffer(1);
-			}else if(Raid01SubController.backup_disk_attached){
+			}else if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
 				//NEXT INSTRUCION CANT BE READ
 				//do odd backup from here
 				R01_PerformBackup(1,DISK_11);
@@ -265,7 +274,7 @@ void R01_Step(){
 			}
 		}else{
 			//do odd backup from here
-			if(Raid01SubController.backup_disk_attached)
+			if(!Raid01SubController.backup_complete)
 				R01_PerformBackup(1,DISK_11);
 			//Reseting variables
 			R01_UseBuffer(1);
@@ -282,7 +291,7 @@ void R01_Step(){
 	}
 	else{
 		//Send 2 backups
-		if(Raid01SubController.backup_disk_attached){
+		if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
 			R01_PerformBackup(1,DISK_01);
 			R01_PerformBackup(1,DISK_11);
 		}

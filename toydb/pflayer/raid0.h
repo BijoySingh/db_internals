@@ -2,7 +2,6 @@
 
 #define RAID_READ 0
 #define RAID_WRITE 1
-#define MAX_ARRAY 1000
 #define BACKUP_THRESHOLD 750
 #define BACKUP_LOWER_THRESHOLD 500
 

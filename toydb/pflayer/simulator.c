@@ -123,6 +123,11 @@ void file_increment(int parity) {
 
 	int temp = DiskController.curr_file[parity];
 	if(temp == DiskController.max_file){
+		printf("HERE\n");
+		if(temp!=-1){
+		printf("THERE\n");
+			R01_BackupComplete();
+		}
 		DiskController.curr_file[parity] = -1;
 		return;
 	}
