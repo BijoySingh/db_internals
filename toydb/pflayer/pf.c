@@ -762,8 +762,8 @@ RETURN VALUE: none
 *****************************************************************************/
 {
 
-	fprintf(stderr,"%s",s);
-	fprintf(stderr,":%s",PFerrormsg[-1*PFerrno]);
+	fprintf(stderr,"%s\n",s);
+	fprintf(stderr,":%s\n",PFerrormsg[-1*PFerrno]);
 	if (PFerrno == PFE_UNIX)
 		/* print the unix error message */
 		perror(" ");

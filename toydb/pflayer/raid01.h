@@ -134,17 +134,11 @@ void R01_Input(int id,int read_or_write,int fd,int pagenum){
 ****************************************************/
 
 void R01_PerformBackup(int even_or_odd,int disk){
-	if(!Raid01SubController.backup_disk_attached){
-		return;
-	}
 	printf("RAID 01 : Granted Request To Backup From Disk %d\n",disk);
 	fprintf(log_file, "R01,BR,-1,-1,%d,%d\n",even_or_odd,disk);
 	request_backup(even_or_odd,disk);
 }
 void R01_PerformForcedBackup(int even_or_odd,int file,int page){
-	if(!Raid01SubController.backup_disk_attached){
-		return;
-	}
 	printf("RAID 01 : Request Forced Backup From Disk \n");
 	fprintf(log_file, "R01,BR,%d,%d,%d,%d\n",file,page,even_or_odd,-1);
 	request_forced_backup(even_or_odd,file,page);
@@ -214,9 +208,10 @@ void R01_Step(){
 				//reset variables
 				R01_UseBuffer(0);
 				R01_UseBuffer(0);
-			}else if(!Raid01SubController.backup_disk_attached){
+			}else if(Raid01SubController.backup_disk_attached){
 				//NEXT INSTRUCION CANT BE READ
 				//do even backup from here
+				
 				R01_PerformBackup(0,DISK_10);
 				//reset variables
 				R01_UseBuffer(0);			
@@ -231,13 +226,17 @@ void R01_Step(){
 		//Perform Write
 		R01_PerformInstruction(bf_even,0,RAID_WRITE,DISK_00);
 		//request to backup this data
-		R01_PerformForcedBackup(0,bf_even.file_descriptor,bf_even.pagenum);
+		if(Raid01SubController.backup_disk_attached)
+			R01_PerformForcedBackup(0,bf_even.file_descriptor,bf_even.pagenum);
+		
 		//Reseting variables
 		R01_UseBuffer(0);
 	}else{
 		//Send 2 backups
-		R01_PerformBackup(0,DISK_00);
-		R01_PerformBackup(0,DISK_10);
+		if(Raid01SubController.backup_disk_attached){
+			R01_PerformBackup(0,DISK_00);
+			R01_PerformBackup(0,DISK_10);
+		}
 	}
 
 	//ODD
@@ -257,7 +256,7 @@ void R01_Step(){
 				//reset variables
 				R01_UseBuffer(1);
 				R01_UseBuffer(1);
-			}else if(!Raid01SubController.backup_disk_attached){
+			}else if(Raid01SubController.backup_disk_attached){
 				//NEXT INSTRUCION CANT BE READ
 				//do odd backup from here
 				R01_PerformBackup(1,DISK_11);
@@ -266,7 +265,8 @@ void R01_Step(){
 			}
 		}else{
 			//do odd backup from here
-			R01_PerformBackup(1,DISK_11);
+			if(Raid01SubController.backup_disk_attached)
+				R01_PerformBackup(1,DISK_11);
 			//Reseting variables
 			R01_UseBuffer(1);
 		}
@@ -274,14 +274,18 @@ void R01_Step(){
 		//Perform Write
 		R01_PerformInstruction(bf_odd,1,RAID_WRITE,DISK_01);
 		//request to backup this data
-		R01_PerformForcedBackup(0,bf_odd.file_descriptor,bf_odd.pagenum);
+		if(Raid01SubController.backup_disk_attached){
+			R01_PerformForcedBackup(0,bf_odd.file_descriptor,bf_odd.pagenum);
+		}
 		//Reseting variables
 		R01_UseBuffer(1);
 	}
 	else{
 		//Send 2 backups
-		R01_PerformBackup(1,DISK_01);
-		R01_PerformBackup(1,DISK_11);
+		if(Raid01SubController.backup_disk_attached){
+			R01_PerformBackup(1,DISK_01);
+			R01_PerformBackup(1,DISK_11);
+		}
 	}
 
 }
