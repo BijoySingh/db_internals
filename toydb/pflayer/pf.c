@@ -151,11 +151,11 @@ RETURN VALUE:
 {
 int error;
 	
-	printf("Calling[%d][%d]\n",fd,pagenum);
+	// printf("Calling[%d][%d]\n",fd,pagenum);
 	/* Inform simulator about operation */
 	call(id, fd, pagenum, 1);
 
-	printf("Seeking[%d][%d]\n",fd,pagenum);
+	// printf("Seeking[%d][%d]\n",fd,pagenum);
 	/* seek to the right place */
 	if ((error=lseek(PFftab[fd].unixfd,pagenum*sizeof(PFfpage)+PF_HDR_SIZE,
 				L_SET)) == -1){
@@ -368,7 +368,7 @@ RETURN VALUE:
 *****************************************************************************/
 {
 int error;
-	printf("Closing File\n");
+	// printf("Closing File\n");
 	if (PFinvalidFd(fd)){
 		/* invalid file descriptor */
 		printf("Invalid File Error\n");
@@ -377,12 +377,12 @@ int error;
 	}
 	
 
-	printf("Releasing Buffer\n");
+	// printf("Releasing Buffer\n");
 	/* Flush all buffers for this file */
 	if ( (error=PFbufReleaseFile(id,fd,PFwritefcn)) != PFE_OK)
 		return(error);
 
-	printf("Seeking\n");
+	// printf("Seeking\n");
 	if (PFftab[fd].hdrchanged){
 		/* write the header back to the file */
 		/* First seek to the appropriate place */
@@ -403,7 +403,7 @@ int error;
 		PFftab[fd].hdrchanged = FALSE;
 	}
 
-	printf("Closing\n");
+	// printf("Closing\n");
 	/* close the file */
 	if ((error=close(PFftab[fd].unixfd))== -1){
 		PFerrno = PFE_UNIX;
@@ -585,13 +585,13 @@ RETURN VALUE:
 {
 PFfpage *fpage;	/* pointer to file page */
 int error;
-	printf("Checking Invalid\n");
+	// printf("Checking Invalid\n");
 	if (PFinvalidFd(fd)){
 		PFerrno= PFE_FD;
 		return(PFerrno);
 	}
 
-	printf("Getting into Buffer\n");
+	// printf("Getting into Buffer\n");
 	if (PFftab[fd].hdr.firstfree != PF_PAGE_LIST_END){
 		/* get a page from the free list */
 		*pagenum = PFftab[fd].hdr.firstfree;
@@ -810,11 +810,8 @@ int *pagenum;
 char **pagebuf;
 {
 	int id = map("alloc_page", fd, -1);
-	printf("IDAllocated %d\n",id);
 	int error_msg = PF_AllocPage(id,fd, pagenum, pagebuf);
-	printf("PF_Allocated \n");
 	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
-	printf("Got Result \n");
 	// *pagenum = -1;
 	// *pagebuf = NULL;
 	return error_msg;
@@ -824,6 +821,18 @@ RAIDPF_DisposePage(fd,pagenum)
 int fd;
 int pagenum;
 {
-	map("dispose_page", fd, pagenum);
-	return PF_DisposePage(fd, pagenum);
+	int id = map("dispose_page", fd, pagenum);
+	return PF_DisposePage(id,fd, pagenum);
+}
+
+RAIDPF_GetNextPage(fd,pagenum,pagebuf)
+int fd;	/* file descriptor of the file */
+int *pagenum;	/* old page number on input, new page number on output */
+char **pagebuf;	/* pointer to pointer to buffer of page data */
+{
+	int id = map("alloc_page", fd, -1);
+	int error_msg = PF_GetNextPage(id,fd,pagenum,pagebuf);
+	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
+
+	return error_msg;
 }

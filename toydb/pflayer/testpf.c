@@ -347,6 +347,10 @@ int error;
 		exit(1);
 	}
 	printf("closing\n");
+	
+	int iter = 0;
+	for(iter=0;iter<10;iter++)
+		DC_step();
 }
 
 /**************************************************************
@@ -382,7 +386,7 @@ int pagenum;
 
 	printf("reading file\n");
 	pagenum = -1;
-	while ((error=PF_GetNextPage(fd,&pagenum,&buf))== PFE_OK){
+	while ((error=RAIDPF_GetNextPage(fd,&pagenum,&buf))== PFE_OK){
 		printf("got page %d, %d\n",pagenum,*buf);
 		if ((error=PF_UnfixPage(fd,pagenum,FALSE))!= PFE_OK){
 			PF_PrintError("unfix");

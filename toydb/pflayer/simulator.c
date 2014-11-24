@@ -119,6 +119,7 @@ void confirm_backup(int fd, int pagenum) {
 	DiskController.file_structure[fd].backed_up[pagenum % 2] = pagenum;
 }
 
-//void step() {
-//
-//}
+void DC_step() {
+	R01_Step();
+	R0_Step();
+}
