@@ -3,6 +3,7 @@
 #include "simulator.h"
 #include "raid01.h"
 #include "raid0.h"
+#define MAX_BUFFER 20
 
 void call(int id, int fd, int pagenum, int read_or_write) {
 	int uid = DiskController.fd_to_uid[fd];
@@ -130,6 +131,10 @@ void file_increment(int parity) {
 	while (!(DiskController.file_structure[DiskController.curr_file[parity]].valid)) {
 		if (DiskController.curr_file[parity] == DiskController.max_file) {
 			DiskController.curr_file[parity] = -1;
+
+			if (temp != -1)
+				R0_BackupComplete();
+
 			break;
 		}
 			DiskController.curr_file[parity]++;
@@ -175,14 +180,19 @@ void confirm_backup(int uid, int pagenum) {
 }
 
 void DC_step() {
-	R01_Step();
-	R0_Step();
+	if(!recovering) {
+		if((R01_Step() + R0_Step()) > MAX_BUFFER) {
+			DC_step();
+		}
+	}
 }
 
 void System_sim_constructor() {
 	DiskController.max_id = -1;
 	DiskController.max_file = -1;
 	DiskController.curr_file[0] = DiskController.curr_file[1] = -1;
+	recovering = false;
+	log_file = fopen("raid_log.txt","w");
 }
 
 int fname_to_uid(char* fname) {
@@ -203,4 +213,47 @@ void file_constructor(char* fname, int uid) {
 	DiskController.file_structure[uid].backed_up[0] = -2; DiskController.file_structure[uid].backed_up[1] = -1;
 	DiskController.file_structure[uid].buffer[0] = -2; DiskController.file_structure[uid].buffer[1] = -1;
 	DiskController.file_structure[uid].fname = fname;
+}
+
+void failure() {
+	int i;
+
+	for(i = 0; i <= DiskController.max_file; i++) {
+		DiskController.file_structure[i].backed_up[0] = -2; DiskController.file_structure[i].backed_up[1] = -1;
+		DiskController.file_structure[uid].buffer[0] = -2; DiskController.file_structure[uid].buffer[1] = -1;
+	} 
+
+	recovering = true;
+}
+
+void recover() {
+	char str[100];
+   	char s[1];
+   	s[0] = ',';
+
+	while (fgets(str, 60, log_file)) {
+		char* token;
+	   	char** strings;
+		int i = 0;
+		token = strtok(str, s);
+		strcpy(strings[0], token);
+		i++;
+
+		if(strcmp(token, "R01") {
+
+		while (token != NULL) {
+			token = strtok(NULL, s);
+			strcpy(strings[i], token);
+			i++;
+		}
+
+		int uid = atoi(strings[2]));
+		int page = atoi(strings[3]);
+		int parity = page % 2;
+		
+		DiskController.file_structure[uid].backed_up[parity] = DiskController.file_structure[uid].backed_up[parity] < page ? page : DiskController.file_structure[uid].backed_up[parity];
+		DiskController.file_structure[uid].buffer[parity] = DiskController.file_structure[uid].backed_up[parity];
+	}
+
+	recovering = false;
 }

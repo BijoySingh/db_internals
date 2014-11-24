@@ -45,4 +45,8 @@ void request_forced_backup(int parity, int uid, int pagenum);
 void confirm_backup(int uid, int pagenum);
 void System_sim_constructor();
 void file_constructor(char* fname, int uid);
+void failure();
+void recover();
+
+FILE* log_file;
 #endif
