@@ -107,6 +107,7 @@ void R0_Input(int fd,int pagenum,int priority){
 }
 
 void R0_Backup(int file,int pagenum){
+	fprintf(log_file, "R0,W,%d,%d,%d,%d\n",file,pagenum,pagenum%2,pagenum%2);
 	printf("RAID 0 : Granted Access To Write(Backup) To Disk %d For %d,%d\n",pagenum%2,file,pagenum);
 }
 

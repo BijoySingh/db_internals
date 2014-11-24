@@ -19,12 +19,12 @@ $(OBJ): $(HDR)
 testhash.o: $(HDR)
 
 testpf.o: $(HDR)
+testraid.o: $(HDR)
 
 lint: 
 	lint $(SRC)
 
 install: pflayer.o 
 
-run: testpf
-	rm -rf file*
-	./testpf
+testraid: testraid.o pflayer.o
+	cc -o testraid testraid.o pflayer.o

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "pf.h"
 #include "pftypes.h"
+#include "simulator.h"
 
 #define FILE1	"file1"
 #define FILE2	"file2"
@@ -14,6 +15,8 @@ int pagenum,*buf;
 int *buf1,*buf2;
 int fd1,fd2;
 
+R01_Constructor();
+R0_constructor();
 
 
 	/* create a few files */
@@ -293,6 +296,10 @@ int fd1,fd2;
 	/* print the hash table */
 	printf("hash table:\n");
 	PFhashPrint();
+
+
+R01_Destructor();
+
 }
 
 

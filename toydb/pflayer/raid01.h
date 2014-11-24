@@ -11,6 +11,9 @@
 #define DISK_10 2
 #define DISK_11 3
 
+FILE *log_file;
+//FORMAT: RAID,INSTRUCTION(R,W,BR),FD,PAGE,ODD_EVEN,DISK
+
 // SystemSimulator
 
 /****************************************************
@@ -37,6 +40,7 @@ typedef struct BufferEntry{
 
 typedef struct RAID01
 {
+	bool backup_disk_attached;
 	//Even Buffer
 	struct BufferEntry buffer_even[MAX_ARRAY];	
 	int buffer_even_count; int buffer_even_start;
@@ -49,7 +53,11 @@ typedef struct RAID01
 } RAID01;
 
 RAID01 Raid01SubController;
+void R01_Destructor(){
+	fclose(log_file);
+}
 void R01_Constructor(){
+	log_file = fopen("raid_log.txt","w");
 	int i;
 	for(i =0;i<MAX_ARRAY;i++){
 		Raid01SubController.buffer_even[i].id=-1;
@@ -67,8 +75,13 @@ void R01_Constructor(){
 	Raid01SubController.buffer_odd_start = 0;
 	Raid01SubController.buffer_even_backup_mode = true;
 	Raid01SubController.buffer_odd_backup_mode = true;
+
+	Raid01SubController.backup_disk_attached = false;
 }
 
+void R01_ActivateBackup(){
+	Raid01SubController.backup_disk_attached = true;
+}
 
 /****************************************************
 *****************************************************
@@ -122,9 +135,11 @@ void R01_Input(int id,int read_or_write,int fd,int pagenum){
 
 void R01_PerformBackup(int even_or_odd,int disk){
 	printf("RAID 01 : Granted Request To Backup From Disk %d\n",disk);
+	fprintf(log_file, "R01,BR,-1,-1,%d,%d\n",even_or_odd,disk);
 	request_backup(even_or_odd,disk);
 }
 void R01_PerformForcedBackup(int even_or_odd,int file,int page){
+	fprintf(log_file, "R01,BR,%d,%d,%d,%d\n",file,page,even_or_odd,-1);
 	request_forced_backup(even_or_odd,file,page);
 }
 
@@ -153,12 +168,24 @@ void R01_UseBuffer(int even_or_odd){
 	PERFORM AN INSTRUTION ON DISK
 ****************************************************/
 
-void R01_PerformInstruction(id,even_or_odd,write_or_read,disk_number){
-	instruction_executed(id);
-	if(write_or_read == 0)
+void R01_PerformInstruction(BufferEntry buffer_entry,int even_or_odd,
+	int write_or_read,int disk_number){
+	instruction_executed(buffer_entry.id);
+	if(write_or_read == 0){
 		printf("RAID 01 : Granted Request To Read From Disk %d\n",disk_number);
-	if(write_or_read == 1)
+		fprintf(log_file, "R01,R,%d,%d,%d,%d\n",
+			buffer_entry.file_descriptor,
+			buffer_entry.pagenum,even_or_odd,disk_number);
+	}
+	if(write_or_read == 1){
+		fprintf(log_file, "R01,W,%d,%d,%d,%d\n",
+			buffer_entry.file_descriptor,
+			buffer_entry.pagenum,even_or_odd,disk_number);
+		fprintf(log_file, "R01,W,%d,%d,%d,%d\n",
+			buffer_entry.file_descriptor,
+			buffer_entry.pagenum,even_or_odd,disk_number+2);
 		printf("RAID 01 : Granted Request To Write To Disks %d and %d\n",disk_number,disk_number+2);
+	}
 }
 
 /****************************************************
@@ -171,19 +198,19 @@ void R01_Step(){
 	if(bf_even.read_or_write == RAID_READ){
 		//FIRST INSTRUCTION IS READ
 		//Perform Read
-		R01_PerformInstruction(bf_even.id,0,RAID_READ,DISK_00);
+		R01_PerformInstruction(bf_even,0,RAID_READ,DISK_00);
 		
-		if(!Raid01SubController.buffer_even_backup_mode){
+		if(!Raid01SubController.buffer_even_backup_mode || !Raid01SubController.backup_disk_attached){
 			//CANT BACKUP
 			BufferEntry bf_even_next = Raid01SubController.buffer_even[(Raid01SubController.buffer_even_start+1)%MAX_ARRAY];
 			if(bf_even_next.read_or_write == RAID_READ){
 				//NEXT INSTRUCTION IS READ
 				//Perform Read
-				R01_PerformInstruction(bf_even_next.id,0,RAID_READ,DISK_10);
+				R01_PerformInstruction(bf_even_next,0,RAID_READ,DISK_10);
 				//reset variables
 				R01_UseBuffer(0);
 				R01_UseBuffer(0);
-			}else{
+			}else if(!Raid01SubController.backup_disk_attached){
 				//NEXT INSTRUCION CANT BE READ
 				//do even backup from here
 				R01_PerformBackup(0,DISK_10);
@@ -198,7 +225,7 @@ void R01_Step(){
 		}
 	}else if(bf_even.read_or_write == RAID_WRITE){
 		//Perform Write
-		R01_PerformInstruction(bf_even.id,0,RAID_WRITE,DISK_00);
+		R01_PerformInstruction(bf_even,0,RAID_WRITE,DISK_00);
 		//request to backup this data
 		R01_PerformForcedBackup(0,bf_even.file_descriptor,bf_even.pagenum);
 		//Reseting variables
@@ -214,19 +241,19 @@ void R01_Step(){
 		if(bf_odd.read_or_write == RAID_READ){
 		//FIRST INSTRUCTION IS READ
 		//Perform Read
-		R01_PerformInstruction(bf_odd.id,1,RAID_READ,DISK_01);
+		R01_PerformInstruction(bf_odd,1,RAID_READ,DISK_01);
 		
-		if(!Raid01SubController.buffer_odd_backup_mode){
+		if(!Raid01SubController.buffer_odd_backup_mode || !Raid01SubController.backup_disk_attached){
 			//CANT BACKUP
 			BufferEntry bf_odd_next = Raid01SubController.buffer_odd[(Raid01SubController.buffer_odd_start+1)%MAX_ARRAY];
 			if(bf_odd_next.read_or_write == RAID_READ){
 				//NEXT INSTRUCTION IS READ
 				//Perform Read
-				R01_PerformInstruction(bf_odd_next.id,0,RAID_READ,DISK_11);
+				R01_PerformInstruction(bf_odd_next,0,RAID_READ,DISK_11);
 				//reset variables
 				R01_UseBuffer(1);
 				R01_UseBuffer(1);
-			}else{
+			}else if(!Raid01SubController.backup_disk_attached){
 				//NEXT INSTRUCION CANT BE READ
 				//do odd backup from here
 				R01_PerformBackup(1,DISK_11);
@@ -241,7 +268,7 @@ void R01_Step(){
 		}
 	}else if(bf_odd.read_or_write == RAID_WRITE){
 		//Perform Write
-		R01_PerformInstruction(bf_odd.id,1,RAID_WRITE,DISK_01);
+		R01_PerformInstruction(bf_odd,1,RAID_WRITE,DISK_01);
 		//request to backup this data
 		R01_PerformForcedBackup(0,bf_odd.file_descriptor,bf_odd.pagenum);
 		//Reseting variables
