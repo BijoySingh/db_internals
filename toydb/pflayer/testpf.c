@@ -59,14 +59,14 @@ int fd1,fd2;
 	and 0,2,4,6 from file2 */
 	for (i=0; i < PF_MAX_BUFS; i++){
 		if (i & 1){
-			if ((error=PF_DisposePage(fd1,i))!= PFE_OK){
+			if ((error=RAIDPF_DisposePage(fd1,i))!= PFE_OK){
 				PF_PrintError("dispose\n");
 				exit(1);
 			}
 			printf("disposed %d of file1\n",i);
 		}
 		else {
-			if ((error=PF_DisposePage(fd2,i))!= PFE_OK){
+			if ((error=RAIDPF_DisposePage(fd2,i))!= PFE_OK){
 				PF_PrintError("dispose\n");
 				exit(1);
 			}
@@ -74,13 +74,13 @@ int fd1,fd2;
 		}
 	}
 
-	if ((error=PF_CloseFile(fd1))!= PFE_OK){
+	if ((error=RAIDPF_CloseFile(fd1))!= PFE_OK){
 		PF_PrintError("close fd1");
 		exit(1);
 	}
 	printf("closed file1\n");
 
-	if ((error=PF_CloseFile(fd2))!= PFE_OK){
+	if ((error=RAIDPF_CloseFile(fd2))!= PFE_OK){
 		PF_PrintError("close fd2");
 		exit(1);
 	}
@@ -133,7 +133,7 @@ int fd1,fd2;
 	printf("opened file2\n");
 
 	for (i=PF_MAX_BUFS; i < PF_MAX_BUFS*2 ; i++){
-		if ((error=PF_AllocPage(fd2,&pagenum,&buf))!= PFE_OK){
+		if ((error=RAIDPF_AllocPage(fd2,&pagenum,&buf))!= PFE_OK){
 			PF_PrintError("first buffer\n");
 			exit(1);
 		}
@@ -144,7 +144,7 @@ int fd1,fd2;
 		}
 		printf("alloc %d file1\n",i,pagenum);
 
-		if ((error=PF_AllocPage(fd1,&pagenum,&buf))!= PFE_OK){
+		if ((error=RAIDPF_AllocPage(fd1,&pagenum,&buf))!= PFE_OK){
 			PF_PrintError("first buffer\n");
 			exit(1);
 		}
@@ -158,14 +158,14 @@ int fd1,fd2;
 
 	for (i= PF_MAX_BUFS; i < PF_MAX_BUFS*2; i++){
 		if (i & 1){
-			if ((error=PF_DisposePage(fd1,i))!= PFE_OK){
+			if ((error=RAIDPF_DisposePage(fd1,i))!= PFE_OK){
 				PF_PrintError("dispose fd1");
 				exit(1);
 			}
 			printf("dispose fd1 page %d\n",i);
 		}
 		else {
-			if ((error=PF_DisposePage(fd2,i))!= PFE_OK){
+			if ((error=RAIDPF_DisposePage(fd2,i))!= PFE_OK){
 				PF_PrintError("dispose fd2");
 				exit(1);
 			}
@@ -176,7 +176,7 @@ int fd1,fd2;
 	printf("getting file2\n");
 	for (i=PF_MAX_BUFS; i < PF_MAX_BUFS*2; i++){
 		if (i & 1){
-			if ((error=PF_GetThisPage(fd2,i,&buf))!=PFE_OK){
+			if ((error=RAIDPF_GetThisPage(fd2,i,&buf))!=PFE_OK){
 				PF_PrintError("get this on fd2");
 				exit(1);
 			}
@@ -191,7 +191,7 @@ int fd1,fd2;
 	printf("getting file1\n");
 	for (i=PF_MAX_BUFS; i < PF_MAX_BUFS*2; i++){
 		if (!(i & 1)){
-			if ((error=PF_GetThisPage(fd1,i,&buf))!=PFE_OK){
+			if ((error=RAIDPF_GetThisPage(fd1,i,&buf))!=PFE_OK){
 				PF_PrintError("get this on fd2");
 				exit(1);
 			}
@@ -211,8 +211,8 @@ int fd1,fd2;
 	/*put some more stuff into file1 */
 	printf("putting stuff into holes in fd1\n"); 
 	for (i=0; i < (PF_MAX_BUFS/2 -1); i++){
-		if (PF_AllocPage(fd1,&pagenum,&buf)!= PFE_OK){
-			PF_PrintError("PF_AllocPage");
+		if (RAIDPF_AllocPage(fd1,&pagenum,&buf)!= PFE_OK){
+			PF_PrintError("RAIDPF_AllocPage");
 			exit(1);
 		}
 		*buf =pagenum;
@@ -225,10 +225,10 @@ int fd1,fd2;
 	printf("printing fd1");
 	printfile(fd1);
 
-	PF_CloseFile(fd1);
+	RAIDPF_CloseFile(fd1);
 	printf("closed file1\n");
 
-	PF_CloseFile(fd2);
+	RAIDPF_CloseFile(fd2);
 	printf("closed file2\n");
 
 	/* open file1 twice */
@@ -244,17 +244,17 @@ int fd1,fd2;
 
 
 	/* get rid of some invalid page */
-	error=PF_DisposePage(fd1,100);
+	error=RAIDPF_DisposePage(fd1,100);
 	PF_PrintError("dispose page 100, should fail");
 
 
 	/* get a valid page, and try to dispose it without unfixing.*/
-	if ((error=PF_GetThisPage(fd1,1,&buf))!=PFE_OK){
+	if ((error=RAIDPF_GetThisPage(fd1,1,&buf))!=PFE_OK){
 		PF_PrintError("get this on fd2");
 		exit(1);
 	}
 	printf("got page%d\n",*buf);
-	error=PF_DisposePage(fd1,1);
+	error=RAIDPF_DisposePage(fd1,1);
 	PF_PrintError("dispose page1, should fail");
 
 	/* Now unfix it */
@@ -276,12 +276,12 @@ int fd1,fd2;
 
 	printfile(fd2);
 
-	if (PF_CloseFile(fd1) != PFE_OK){
+	if (RAIDPF_CloseFile(fd1) != PFE_OK){
 		PF_PrintError("close fd1");
 		exit(1);
 	}
 
-	if (PF_CloseFile(fd2)!= PFE_OK){
+	if (RAIDPF_CloseFile(fd2)!= PFE_OK){
 		PF_PrintError("close fd2");
 		exit(1);
 	}
@@ -319,7 +319,7 @@ int error;
 	printf("opened %s\n",fname);
 
 	for (i=0; i < PF_MAX_BUFS; i++){
-		if ((error=PF_AllocPage(fd,&pagenum,&buf))!= PFE_OK){
+		if ((error=RAIDPF_AllocPage(fd,&pagenum,&buf))!= PFE_OK){
 			PF_PrintError("first buffer\n");
 			exit(1);
 		}
@@ -327,7 +327,7 @@ int error;
 		printf("allocated page %d\n",pagenum);
 	}
 
-	if ((error=PF_AllocPage(fd,&pagenum,&buf))==PFE_OK){
+	if ((error=RAIDPF_AllocPage(fd,&pagenum,&buf))==PFE_OK){
 		printf("too many buffers, and it's still OK\n");
 		exit(1);
 	}
@@ -340,12 +340,13 @@ int error;
 		}
 	}
 
+	printf("trying to close\n");
 	/* close the file */
-	if ((error=PF_CloseFile(fd))!= PFE_OK){
+	if ((error=RAIDPF_CloseFile(fd))!= PFE_OK){
 		PF_PrintError("close file1\n");
 		exit(1);
 	}
-
+	printf("closing\n");
 }
 
 /**************************************************************
@@ -364,8 +365,9 @@ int fd;
 		PF_PrintError("open file");
 		exit(1);
 	}
+	printf("%d\n",fd);
 	printfile(fd);
-	if ((error=PF_CloseFile(fd))!= PFE_OK){
+	if ((error=RAIDPF_CloseFile(fd))!= PFE_OK){
 		PF_PrintError("close file");
 		exit(1);
 	}

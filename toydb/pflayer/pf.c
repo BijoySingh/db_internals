@@ -150,11 +150,16 @@ RETURN VALUE:
 *****************************************************************************/
 {
 int error;
+	
+	printf("Calling[%d][%d]\n",fd,pagenum);
 	/* Inform simulator about operation */
 	call(id, fd, pagenum, 1);
+
+	printf("Seeking[%d][%d]\n",fd,pagenum);
 	/* seek to the right place */
 	if ((error=lseek(PFftab[fd].unixfd,pagenum*sizeof(PFfpage)+PF_HDR_SIZE,
 				L_SET)) == -1){
+
 		PFerrno = PFE_UNIX;
 		return(PFerrno);
 	}
@@ -345,7 +350,8 @@ int fd; /* file descriptor */
 	return(fd);
 }
 
-PF_CloseFile(fd)
+PF_CloseFile(id,fd)
+int id;
 int fd;		/* file descriptor to close */
 /****************************************************************************
 SPECIFICATIONS:
@@ -362,18 +368,21 @@ RETURN VALUE:
 *****************************************************************************/
 {
 int error;
-	
+	printf("Closing File\n");
 	if (PFinvalidFd(fd)){
 		/* invalid file descriptor */
+		printf("Invalid File Error\n");
 		PFerrno = PFE_FD;
 		return(PFerrno);
 	}
 	
 
+	printf("Releasing Buffer\n");
 	/* Flush all buffers for this file */
-	if ( (error=PFbufReleaseFile(fd,PFwritefcn)) != PFE_OK)
+	if ( (error=PFbufReleaseFile(id,fd,PFwritefcn)) != PFE_OK)
 		return(error);
 
+	printf("Seeking\n");
 	if (PFftab[fd].hdrchanged){
 		/* write the header back to the file */
 		/* First seek to the appropriate place */
@@ -394,8 +403,7 @@ int error;
 		PFftab[fd].hdrchanged = FALSE;
 	}
 
-
-		
+	printf("Closing\n");
 	/* close the file */
 	if ((error=close(PFftab[fd].unixfd))== -1){
 		PFerrno = PFE_UNIX;
@@ -436,7 +444,8 @@ RETURN VALUE:
 }
 
 
-PF_GetNextPage(fd,pagenum,pagebuf)
+PF_GetNextPage(id,fd,pagenum,pagebuf)
+int id;
 int fd;	/* file descriptor of the file */
 int *pagenum;	/* old page number on input, new page number on output */
 char **pagebuf;	/* pointer to pointer to buffer of page data */
@@ -477,7 +486,7 @@ PFfpage *fpage;	/* pointer to file page */
 
 	/* scan the file until a valid used page is found */
 	for (temppage= *pagenum+1;temppage<PFftab[fd].hdr.numpages;temppage++){
-		if ( (error=PFbufGet(fd,temppage,&fpage,PFreadfcn,
+		if ( (error=PFbufGet(id,fd,temppage,&fpage,PFreadfcn,
 					PFwritefcn))!= PFE_OK)
 			return(error);
 		else if (fpage->nextfree == PF_PAGE_USED){
@@ -498,7 +507,8 @@ PFfpage *fpage;	/* pointer to file page */
 
 }
 
-PF_GetThisPage(fd,pagenum,pagebuf)
+PF_GetThisPage(id,fd,pagenum,pagebuf)
+int id;
 int fd;		/* file descriptor */
 int pagenum;	/* page number to read */
 char **pagebuf;	/* pointer to pointer to page data */
@@ -531,7 +541,7 @@ PFfpage *fpage;
 		return(PFerrno);
 	}
 
-	if ( (error=PFbufGet(fd,pagenum,&fpage,PFreadfcn,PFwritefcn))!= PFE_OK){
+	if ( (error=PFbufGet(id,fd,pagenum,&fpage,PFreadfcn,PFwritefcn))!= PFE_OK){
 		if (error== PFE_PAGEFIXED)
 			*pagebuf = fpage->pagebuf;
 		return(error);
@@ -553,7 +563,8 @@ PFfpage *fpage;
 	}
 }
 
-PF_AllocPage(fd,pagenum,pagebuf)
+PF_AllocPage(id,fd,pagenum,pagebuf)
+int id;
 int fd;		/* file descriptor */
 int *pagenum;	/* page number */
 char **pagebuf;	/* pointer to pointer to page buffer*/
@@ -574,16 +585,17 @@ RETURN VALUE:
 {
 PFfpage *fpage;	/* pointer to file page */
 int error;
-
+	printf("Checking Invalid\n");
 	if (PFinvalidFd(fd)){
 		PFerrno= PFE_FD;
 		return(PFerrno);
 	}
 
+	printf("Getting into Buffer\n");
 	if (PFftab[fd].hdr.firstfree != PF_PAGE_LIST_END){
 		/* get a page from the free list */
 		*pagenum = PFftab[fd].hdr.firstfree;
-		if ((error=PFbufGet(fd,*pagenum,&fpage,PFreadfcn,
+		if ((error=PFbufGet(id,fd,*pagenum,&fpage,PFreadfcn,
 					PFwritefcn))!= PFE_OK)
 			/* can't get the page */
 			return(error);
@@ -593,10 +605,10 @@ int error;
 	else {
 		/* Free list empty, allocate one more page from the file */
 		*pagenum = PFftab[fd].hdr.numpages;
-		if ((error=PFbufAlloc(fd,*pagenum,&fpage,PFwritefcn))!= PFE_OK)
+		if ((error=PFbufAlloc(id,fd,*pagenum,&fpage,PFwritefcn))!= PFE_OK)
 			/* can't allocate a page */
 			return(error);
-	
+
 		/* increment # of pages for this file */
 		PFftab[fd].hdr.numpages++;
 		PFftab[fd].hdrchanged = TRUE;
@@ -624,7 +636,8 @@ int error;
 	return(PFE_OK);
 }
 
-PF_DisposePage(fd,pagenum)
+PF_DisposePage(id,fd,pagenum)
+int id;
 int fd;		/* file descriptor */
 int pagenum;	/* page number */
 /****************************************************************************
@@ -653,7 +666,7 @@ int error;
 		return(PFerrno);
 	}
 
-	if ((error=PFbufGet(fd,pagenum,&fpage,PFreadfcn,PFwritefcn))!= PFE_OK)
+	if ((error=PFbufGet(id,fd,pagenum,&fpage,PFreadfcn,PFwritefcn))!= PFE_OK)
 		/* can't get this page */
 		return(error);
 	
@@ -762,8 +775,8 @@ RETURN VALUE: none
 RAIDPF_CloseFile(fd)
 int fd;
 {
-	map("close_file", fd, -1);
-	return PF_CloseFile(fd);
+	int id = map("close_file", fd, -1);
+	return PF_CloseFile(id,fd);
 }
 
 RAIDPF_GetFirstPage(fd,pagenum,pagebuf)
@@ -772,11 +785,11 @@ int *pagenum;
 char **pagebuf;
 {
 	int id = map("get_first_page", fd, -1);
-	PF_GetFirstPage(fd, pagenum, pagebuf);
+	int error_msg = PF_GetFirstPage(id,fd, pagenum, pagebuf);
 	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
-	*pagenum = -1;
-	*pagebuf = NULL;
-	return;
+	// *pagenum = -1;
+	// *pagebuf = NULL;
+	return error_msg;
 }
 
 RAIDPF_GetThisPage(fd,pagenum,pagebuf)
@@ -785,10 +798,10 @@ int pagenum;
 char **pagebuf;
 {
 	int id = map("get_this_page", fd, pagenum);
-	PF_GetThisPage(fd, pagenum, pagebuf);
+	int error_msg = PF_GetThisPage(id,fd, pagenum, pagebuf);
 	result(id, NULL, NULL, -1, *pagebuf);
-	*pagebuf = NULL;
-	return;
+	// *pagebuf = NULL;
+	return error_msg;
 }
 
 RAIDPF_AllocPage(fd,pagenum,pagebuf)
@@ -797,11 +810,14 @@ int *pagenum;
 char **pagebuf;
 {
 	int id = map("alloc_page", fd, -1);
-	PF_AllocPage(fd, pagenum, pagebuf);
+	printf("IDAllocated %d\n",id);
+	int error_msg = PF_AllocPage(id,fd, pagenum, pagebuf);
+	printf("PF_Allocated \n");
 	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
-	*pagenum = -1;
-	*pagebuf = NULL;
-	return;
+	printf("Got Result \n");
+	// *pagenum = -1;
+	// *pagebuf = NULL;
+	return error_msg;
 }
 
 RAIDPF_DisposePage(fd,pagenum)

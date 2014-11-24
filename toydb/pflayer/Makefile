@@ -25,3 +25,6 @@ lint:
 
 install: pflayer.o 
 
+run: testpf
+	rm -rf file*
+	./testpf

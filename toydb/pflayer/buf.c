@@ -91,7 +91,8 @@ GLOBAL VARIABLES MODIFIED:
 }
 
 
-static PFbufInternalAlloc(bpage,writefcn)
+static PFbufInternalAlloc(id,bpage,writefcn)
+int id;
 PFbpage **bpage;	/* pointer to pointer to buffer bpage to be allocated*/
 int (*writefcn)();
 /****************************************************************************
@@ -163,7 +164,7 @@ int error;		/* error value returned*/
 		}
 
 		/* write out the dirty page */
-		if (tbpage->dirty&&((error=(*writefcn)(tbpage->fd,
+		if (tbpage->dirty&&((error=(*writefcn)(id,tbpage->fd,
 				tbpage->page,&tbpage->fpage))!= PFE_OK))
 			return(error);
 		tbpage->dirty = FALSE;
@@ -187,7 +188,8 @@ int error;		/* error value returned*/
 
 /************************* Interface to the Outside World ****************/
 
-PFbufGet(fd,pagenum,fpage,readfcn,writefcn)
+PFbufGet(id,fd,pagenum,fpage,readfcn,writefcn)
+int id;
 int fd;	/* file descriptor */
 int pagenum;	/* page number */
 PFfpage **fpage;	/* pointer to pointer to file page */
@@ -227,14 +229,14 @@ int error;
 		/* page not in buffer. */
 		
 		/* allocate an empty page */
-		if ((error=PFbufInternalAlloc(&bpage,writefcn))!= PFE_OK){
+		if ((error=PFbufInternalAlloc(id,&bpage,writefcn))!= PFE_OK){
 			/* error */
 			*fpage = NULL;
 			return(error);
 		}
 		
 		/* read the page */
-		if ((error=(*readfcn)(fd,pagenum,&bpage->fpage))!= PFE_OK){
+		if ((error=(*readfcn)(id,fd,pagenum,&bpage->fpage))!= PFE_OK){
 			/* error reading the page. put buffer back into 
 			the free list, and return gracefully */
 			PFbufUnlink(bpage);
@@ -319,7 +321,8 @@ PFbpage *bpage;
 	return(PFE_OK);
 }
 
-PFbufAlloc(fd,pagenum,fpage,writefcn)
+PFbufAlloc(id,fd,pagenum,fpage,writefcn)
+int id;
 int fd;		/* file descriptor */
 int pagenum;	/* page number */
 PFfpage **fpage;	/* pointer to file page */
@@ -348,7 +351,7 @@ int error;
 		return(PFerrno);
 	}
 
-	if ((error=PFbufInternalAlloc(&bpage,writefcn))!= PFE_OK)
+	if ((error=PFbufInternalAlloc(id,&bpage,writefcn))!= PFE_OK)
 		/* can't get any buffer */
 		return(error);
 	
@@ -372,7 +375,8 @@ int error;
 }
 
 
-PFbufReleaseFile(fd,writefcn)
+PFbufReleaseFile(id,fd,writefcn)
+int id;
 int fd;		/* file descriptor */
 int (*writefcn)();	/* function to write a page of file */
 /****************************************************************************
@@ -406,7 +410,7 @@ int error;		/* error code */
 			}
 
 			/* write out dirty page */
-			if (bpage->dirty&&((error=(*writefcn)(fd,bpage->page,
+			if (bpage->dirty&&((error=(*writefcn)(id,fd,bpage->page,
 					&bpage->fpage))!= PFE_OK))
 				/* error writing file */
 				return(error);
