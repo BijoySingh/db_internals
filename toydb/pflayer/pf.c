@@ -247,7 +247,7 @@ int error;
 		return(PFerrno);
 	}
 
-	create(fname, fd);
+	create(fname);
 	return(PFE_OK);
 }
 
@@ -347,6 +347,7 @@ int fd; /* file descriptor */
 		return(PFerrno);
 	}
 
+	DC_open(fname, fd);
 	return(fd);
 }
 
@@ -830,7 +831,7 @@ int fd;	/* file descriptor of the file */
 int *pagenum;	/* old page number on input, new page number on output */
 char **pagebuf;	/* pointer to pointer to buffer of page data */
 {
-	int id = map("alloc_page", fd, -1);
+	int id = map("get_next_page", fd, *pagenum);
 	int error_msg = PF_GetNextPage(id,fd,pagenum,pagebuf);
 	result(id, pagenum, pagebuf, *pagenum, *pagebuf);
 

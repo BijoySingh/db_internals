@@ -5,7 +5,8 @@
 #include "raid0.h"
 
 void call(int id, int fd, int pagenum, int read_or_write) {
-	R01_Input(id, read_or_write, fd, pagenum);
+	int uid = fd_to_uid[fd];
+	R01_Input(id, read_or_write, uid, pagenum);
 
 	DiskController.list[id].count++;
 }
@@ -55,43 +56,75 @@ void print(int id) {
 		printf("%s%s", "Allocated page for file ", DiskController.list[id].fd);
 	}
 
-	else
+	else if(strcmp(DiskController.list[id].op_name, "dispose_page"))
 		printf("%s%s%s%s", "Disposed off page ", DiskController.list[id].pagenum, " of file ", DiskController.list[id].fd);
+
+	else {
+		DiskController.list[id].resultpagepointer = &(DiskController.list[id].resultpagenum);
+		DiskController.list[id].pagebuf = &(DiskController.list[id].data);
+		printf("%s%s%s", "Fetched page after ", DiskController.list[id].pagenum, " for file ", DiskController.list[id].fd);
+	}
 }
 
-void create(char* fname, int fd) {
-	DiskController.file_structure[fd].valid = true;
-	DiskController.file_structure[fd].fname = fname;	
+void create(char* fname) {
+	int uid = fname_to_uid(fname);
+
+	if (uid == (1 + DiskController.max_file))
+		DiskController.max_file++;
+	//DiskController.max_file = DiskController.max_file < fd ? fd : DiskController.max_file;
+	file_constructor(fname, uid);
+	DiskController.curr_file[0] = DiskController.curr_file[0] < uid ? uid : DiskController.curr_file[0];
+	DiskController.curr_file[1] = DiskController.curr_file[1] < uid ? uid : DiskController.curr_file[1];
 }
 
 void destroy(char* fname) {
-	int fd;	
-	for(fd = 0; fd < 1000; fd++){
-		if(DiskController.file_structure[fd].valid && (DiskController.file_structure[fd].fname == fname)){
+	int uid;	
+	for(uid = 0; uid < 1000; uid++){
+		if(DiskController.file_structure[uid].valid && (DiskController.file_structure[uid].fname == fname)){
 
-			DiskController.file_structure[fd].valid = false;
-			DiskController.file_structure[fd].pages[0] = DiskController.file_structure[fd].backed_up[0] = DiskController.file_structure[fd].buffer[0] = DiskController.file_structure[fd].pages[1] = DiskController.file_structure[fd].backed_up[1] = DiskController.file_structure[fd].buffer[1] = 0;
+			DiskController.file_structure[uid].valid = false;
 			break;
 		}
 	}
 }
 
-void increment(int fd, int pagenum) {
-	DiskController.file_structure[fd].pages[pagenum % 2] = DiskController.file_structure[fd].pages[pagenum % 2] < pagenum ? pagenum : DiskController.file_structure[fd].pages[pagenum % 2];
+void DC_open(char* fname, int fd) {
+	fd_to_uid[fd] = fname_to_uid(fname);
 }
 
-void dispose(int fd, int pagenum) {
-					//Not sure if needed
+void increment(int uid, int pagenum) {
+	DiskController.file_structure[uid].pages[pagenum % 2] = DiskController.file_structure[uid].pages[pagenum % 2] < pagenum ? pagenum : DiskController.file_structure[uid].pages[pagenum % 2];
+}
+
+void dispose(int uid, int pagenum) {
+	if (DiskController.file_structure[uid].pages[parity] == pagenum) {
+		DiskController.file_structure[uid].pages[parity] -= 2;
+
+		DiskController.file_structure[uid].buffer[parity] = DiskController.file_structure[uid].buffer[parity] <= pagenum ? DiskController.file_structure[uid].buffer[parity] : pagenum;
+		DiskController.file_structure[uid].backed_up[parity] = DiskController.file_structure[uid].backed_up[parity] <= pagenum ? DiskController.file_structure[uid].backed_up[parity] : pagenum;
+
+		if ((DiskController.curr_file[parity] == uid) && (DiskController.file_structure[uid].buffer[parity] == DiskController.file_structure[uid].pages[parity]))
+			file_increment(parity);
+
+	}
 }
 
 void file_increment(int parity) {
 	int temp = DiskController.curr_file[parity];
 
-	while (!(DiskController.file_structure[temp].valid))
-		DiskController.curr_file[parity]++;
+	while (!(DiskController.file_structure[temp].valid)) {
+		if (DiskController.curr_file[parity] == DiskController.max_file) {
+			DiskController.curr_file[parity] = -1;
+			break;
+		}
+			DiskController.curr_file[parity]++;
+	}
 }
 
 void request_backup(int parity, int disk) {
+	if (DiskController.curr_file[parity] == -1)
+		return;
+
 	DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity] += 2;
 	R0_Input(DiskController.curr_file[parity], DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity], 0);	//Note that disk is not being used
 
@@ -99,27 +132,47 @@ void request_backup(int parity, int disk) {
 		file_increment(parity);
 }
 
-void request_forced_backup(int parity, int fd, int pagenum) {
+void request_forced_backup(int parity, int uid, int pagenum) {
 	//int parity = pagenum % 2;
 
-	if (DiskController.file_structure[fd].buffer[parity] < pagenum)
+	if (DiskController.file_structure[uid].buffer[parity] < pagenum)
 		;
-	else if (DiskController.file_structure[fd].backed_up[parity] < pagenum)
-		R0_Input(fd, pagenum, 1);
+	else if (DiskController.file_structure[uid].backed_up[parity] < pagenum)
+		R0_Input(uid, pagenum, 1);
 	else
-		R0_Input(fd, pagenum, 2);
+		R0_Input(uid, pagenum, 2);
 
-	//ignore curr_file < fd || curr_file == fd && curr_file.buffer < pagenum
-	//priority 1 curr_file == fd && curr_file.backed_up < fd && curr_file.buffer > fd
+	//ignore curr_file < uid || curr_file == uid && curr_file.buffer < pagenum
+	//priority 1 curr_file == uid && curr_file.backed_up < uid && curr_file.buffer > uid
 	//priority 2
-	//if (curr_file < fd || (curr_file == fd && curr_file.backed_up < fd && curr_file.buffer > fd)
+	//if (curr_file < uid || (curr_file == uid && curr_file.backed_up < uid && curr_file.buffer > uid)
 }
 
-void confirm_backup(int fd, int pagenum) {
-	DiskController.file_structure[fd].backed_up[pagenum % 2] = pagenum;
+void confirm_backup(int uid, int pagenum) {
+	if (DiskController.file_structure[uid].pages[pagenum % 2] >= pagenum)
+		DiskController.file_structure[uid].backed_up[pagenum % 2] = pagenum;
 }
 
 void DC_step() {
 	R01_Step();
 	R0_Step();
+}
+
+void System_sim_constructor() {
+	DiskController.max_id = -1;
+	DiskController.max_file = -1;
+	DiskController.curr_file[0] = DiskController.curr_file[1] = -1;
+}
+
+int fname_to_uid(char* fname) {
+	int i, uid;
+	for (i = 0; i <= DiskController.max_file; i++) {
+		if (DiskController.file_structure[i].fname == fname) {
+			uid = i;
+			break;
+		}
+		i++;
+	}
+
+	return uid;
 }
