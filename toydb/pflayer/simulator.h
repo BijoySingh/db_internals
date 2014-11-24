@@ -1,5 +1,7 @@
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
+
+#define MAX_ARRAY 1000
 #include<stdbool.h>
 
 typedef struct input {
