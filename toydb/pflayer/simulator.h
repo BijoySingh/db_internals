@@ -44,11 +44,5 @@ void request_backup(int parity, int disk);
 void request_forced_backup(int parity, int uid, int pagenum);
 void confirm_backup(int uid, int pagenum);
 void System_sim_constructor();
-void file_constructor(char* fname, int uid) {
-	DiskController.file_structure[uid].valid = true;
-	DiskController.file_structure[uid].pages[0] = -2; DiskController.file_structure[uid].pages[1] = -1;
-	DiskController.file_structure[uid].backed_up[0] = -2; DiskController.file_structure[uid].backed_up[1] = -1;
-	DiskController.file_structure[uid].buffer[0] = -2; DiskController.file_structure[uid].buffer[1] = -1;
-	DiskController.fname = fname;
-}
+void file_constructor(char* fname, int uid);
 #endif

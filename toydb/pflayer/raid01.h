@@ -134,11 +134,18 @@ void R01_Input(int id,int read_or_write,int fd,int pagenum){
 ****************************************************/
 
 void R01_PerformBackup(int even_or_odd,int disk){
+	if(!Raid01SubController.backup_disk_attached){
+		return;
+	}
 	printf("RAID 01 : Granted Request To Backup From Disk %d\n",disk);
 	fprintf(log_file, "R01,BR,-1,-1,%d,%d\n",even_or_odd,disk);
 	request_backup(even_or_odd,disk);
 }
 void R01_PerformForcedBackup(int even_or_odd,int file,int page){
+	if(!Raid01SubController.backup_disk_attached){
+		return;
+	}
+	printf("RAID 01 : Request Forced Backup From Disk \n");
 	fprintf(log_file, "R01,BR,%d,%d,%d,%d\n",file,page,even_or_odd,-1);
 	request_forced_backup(even_or_odd,file,page);
 }
@@ -181,9 +188,6 @@ void R01_PerformInstruction(BufferEntry buffer_entry,int even_or_odd,
 		fprintf(log_file, "R01,W,%d,%d,%d,%d\n",
 			buffer_entry.file_descriptor,
 			buffer_entry.pagenum,even_or_odd,disk_number);
-		fprintf(log_file, "R01,W,%d,%d,%d,%d\n",
-			buffer_entry.file_descriptor,
-			buffer_entry.pagenum,even_or_odd,disk_number+2);
 		printf("RAID 01 : Granted Request To Write To Disks %d and %d\n",disk_number,disk_number+2);
 	}
 }

@@ -5,7 +5,7 @@
 #include "raid0.h"
 
 void call(int id, int fd, int pagenum, int read_or_write) {
-	int uid = fd_to_uid[fd];
+	int uid = DiskController.fd_to_uid[fd];
 	R01_Input(id, read_or_write, uid, pagenum);
 
 	DiskController.list[id].count++;
@@ -37,40 +37,42 @@ void result(int id, int* pagepointer, char** pagebuf, int pagenum, int data) {
 
 void print(int id) {
 	if (strcmp(DiskController.list[id].op_name, "close_file"))
-		printf("%s%s", "Closed file ", DiskController.list[id].fd);
+		printf("%s%s\n", "Closed file ", DiskController.list[id].fd);
 
 	else if (strcmp(DiskController.list[id].op_name, "get_first_page")) {
 		DiskController.list[id].resultpagepointer = &(DiskController.list[id].resultpagenum);
 		DiskController.list[id].pagebuf = &(DiskController.list[id].data);
-		printf("%s%s", "Fetched first page of file ", DiskController.list[id].fd);
+		printf("%s%s\n", "Fetched first page of file ", DiskController.list[id].fd);
 	}
 
 	else if (strcmp(DiskController.list[id].op_name, "get_this_page")) {
 		DiskController.list[id].pagebuf = &(DiskController.list[id].data);
-		printf("%s%s%s%s", "Fetch page ", DiskController.list[id].pagenum, " of file ", DiskController.list[id].fd);
+		printf("%s%s%s%s\n", "Fetch page ", DiskController.list[id].pagenum, " of file ", DiskController.list[id].fd);
 	}
 
 	else if (strcmp(DiskController.list[id].op_name, "alloc_page")) {
 		DiskController.list[id].resultpagepointer = &(DiskController.list[id].resultpagenum);
 		DiskController.list[id].pagebuf = &(DiskController.list[id].data);
-		printf("%s%s", "Allocated page for file ", DiskController.list[id].fd);
+		printf("%s%s\n", "Allocated page for file ", DiskController.list[id].fd);
 	}
 
 	else if(strcmp(DiskController.list[id].op_name, "dispose_page"))
-		printf("%s%s%s%s", "Disposed off page ", DiskController.list[id].pagenum, " of file ", DiskController.list[id].fd);
+		printf("%s%s%s%s\n", "Disposed off page ", DiskController.list[id].pagenum, " of file ", DiskController.list[id].fd);
 
 	else {
 		DiskController.list[id].resultpagepointer = &(DiskController.list[id].resultpagenum);
 		DiskController.list[id].pagebuf = &(DiskController.list[id].data);
-		printf("%s%s%s", "Fetched page after ", DiskController.list[id].pagenum, " for file ", DiskController.list[id].fd);
+		printf("%s%s%s\n", "Fetched page after ", DiskController.list[id].pagenum, " for file ", DiskController.list[id].fd);
 	}
 }
 
 void create(char* fname) {
+	printf("%d\n",DiskController.max_file);
 	int uid = fname_to_uid(fname);
 
 	if (uid == (1 + DiskController.max_file))
 		DiskController.max_file++;
+	printf("%s %d\n",fname,uid);
 	//DiskController.max_file = DiskController.max_file < fd ? fd : DiskController.max_file;
 	file_constructor(fname, uid);
 	DiskController.curr_file[0] = DiskController.curr_file[0] < uid ? uid : DiskController.curr_file[0];
@@ -89,14 +91,20 @@ void destroy(char* fname) {
 }
 
 void DC_open(char* fname, int fd) {
-	fd_to_uid[fd] = fname_to_uid(fname);
+
+	DiskController.fd_to_uid[fd] = fname_to_uid(fname);
 }
 
-void increment(int uid, int pagenum) {
+void increment(int fd, int pagenum) {
+	int uid = DiskController.fd_to_uid[fd];
+	// printf("BEFORE %d %d %d ",uid,pagenum,DiskController.file_structure[uid].pages[pagenum % 2]);
 	DiskController.file_structure[uid].pages[pagenum % 2] = DiskController.file_structure[uid].pages[pagenum % 2] < pagenum ? pagenum : DiskController.file_structure[uid].pages[pagenum % 2];
+	// printf("AFTER %d\n",DiskController.file_structure[uid].pages[pagenum % 2]);
 }
 
 void dispose(int uid, int pagenum) {
+
+	int parity = pagenum%2;
 	if (DiskController.file_structure[uid].pages[parity] == pagenum) {
 		DiskController.file_structure[uid].pages[parity] -= 2;
 
@@ -128,8 +136,9 @@ void request_backup(int parity, int disk) {
 	DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity] += 2;
 	R0_Input(DiskController.curr_file[parity], DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity], 0);	//Note that disk is not being used
 
-	if (DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity] == DiskController.file_structure[DiskController.curr_file[parity]].pages)
+	if (DiskController.file_structure[DiskController.curr_file[parity]].buffer[parity] >= DiskController.file_structure[DiskController.curr_file[parity]].pages[parity])
 		file_increment(parity);
+
 }
 
 void request_forced_backup(int parity, int uid, int pagenum) {
@@ -165,14 +174,21 @@ void System_sim_constructor() {
 }
 
 int fname_to_uid(char* fname) {
-	int i, uid;
-	for (i = 0; i <= DiskController.max_file; i++) {
+	int i;
+	for (i = 0; i <= DiskController.max_file;) {
 		if (DiskController.file_structure[i].fname == fname) {
-			uid = i;
 			break;
 		}
 		i++;
 	}
 
-	return uid;
+	return i;
+}
+
+void file_constructor(char* fname, int uid) {
+	DiskController.file_structure[uid].valid = true;
+	DiskController.file_structure[uid].pages[0] = -2; DiskController.file_structure[uid].pages[1] = -1;
+	DiskController.file_structure[uid].backed_up[0] = -2; DiskController.file_structure[uid].backed_up[1] = -1;
+	DiskController.file_structure[uid].buffer[0] = -2; DiskController.file_structure[uid].buffer[1] = -1;
+	DiskController.file_structure[uid].fname = fname;
 }

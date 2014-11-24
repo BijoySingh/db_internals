@@ -17,10 +17,12 @@ main()
 	int fd1,fd2;
 	int write_count = 0;
 	int max_write_count = 5;
-
+	
+	System_sim_constructor(); //Initialise the values
 	R01_Constructor();	//Initialise the RAID 01 Disk
 	R0_constructor();	//Initialise the RAID 0 Disk
-
+	
+	printf("Creating File 1 \n");
 	PF_CreateFile(FILE1);
 	printf("File1 Created \n");
 	
@@ -36,6 +38,7 @@ main()
 	writefile(FILE2);
 	readfile(FILE2);
 
+	printf("ACTIVATE BACKUP\n");
 	R01_ActivateBackup();
 
 	int fd_1,fd_2;
@@ -68,7 +71,7 @@ main()
 	}
 
 	RAIDPF_CloseFile(fd1);
-	printf("Closed File1\n");
+	printf("Special Closed File1\n");
 
 	RAIDPF_CloseFile(fd2);
 	printf("Closed File2\n");
