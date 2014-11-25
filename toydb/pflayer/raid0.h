@@ -2,8 +2,8 @@
 
 #define RAID_READ 0
 #define RAID_WRITE 1
-#define BACKUP_THRESHOLD 750
-#define BACKUP_LOWER_THRESHOLD 500
+#define BACKUP_THRESHOLD  (int)MAX_BUFFER*0.8
+#define BACKUP_LOWER_THRESHOLD (int)MAX_BUFFER*0.5
 
 typedef struct WriteEntry{
 	int pagenum;
@@ -27,7 +27,11 @@ typedef struct RAID0
 } RAID0; //Raid0SubController
 
 RAID0 Raid0SubController;
-
+void R0_DeleteBuffer(){
+	fprintf(log_file, "BUFFER DESTROYED\n");
+	Raid0SubController.buffer_odd_count = 0;
+	Raid0SubController.buffer_even_count = 0;
+}
 void R0_Constructor(){
 	int i = 0;	
 	for (;i<MAX_ARRAY;i++){
@@ -71,33 +75,41 @@ void R0_AddModifyEntry(int fd,int page){
 }
 
 void R0_Input(int fd,int pagenum,int priority){
-	if(pagenum % 2 == 0 && priority == 0)
-		R0_AddEvenEntry(fd,pagenum);
-	else
-		R0_AddOddEntry(fd,pagenum);
-
-	if(pagenum % 2 == 0 && priority == 1)
-		R0_AddModifyEntry(fd,pagenum);
-	else
-		R0_AddModifyEntry(fd,pagenum);
-	
-	if(pagenum % 2 == 0 && priority == 2){
-		Raid0SubController.even_priority.file_descriptor = fd;
-		Raid0SubController.even_priority.pagenum = pagenum;
+	printf("R0 INpUT %d,%d,%d\n",fd,pagenum,priority);
+	if(priority == 0)
+	{
+		if(pagenum % 2 == 0)
+			R0_AddEvenEntry(fd,pagenum);
+		else
+			R0_AddOddEntry(fd,pagenum);
 	}
-	else{
-		Raid0SubController.odd_priority.file_descriptor = fd;
-		Raid0SubController.odd_priority.pagenum = pagenum;	
-	}	
+	if(priority == 1){
+		if(pagenum % 2 == 0)
+			R0_AddModifyEntry(fd,pagenum);
+		else
+			R0_AddModifyEntry(fd,pagenum);
+	}
+	if(priority == 2){
+		if(pagenum % 2 == 0){
+			Raid0SubController.even_priority.file_descriptor = fd;
+			Raid0SubController.even_priority.pagenum = pagenum;
+		}
+		else{
+			Raid0SubController.odd_priority.file_descriptor = fd;
+			Raid0SubController.odd_priority.pagenum = pagenum;	
+		}
+	}
 }
 
 void R0_Backup(int file,int pagenum){
 	fprintf(log_file, "R0,W,%d,%d,%d,%d\n",file,pagenum,pagenum%2,pagenum%2);
+
 	printf("RAID 0 : Granted Access To Write(Backup) To Disk %d For %d,%d\n",pagenum%2,file,pagenum);
 }
 
-void R0_Step(){
+int R0_Step(){
 	//EVEN
+	printf("BUFFER SIZE : %d:%d\n",Raid0SubController.buffer_even_count,Raid0SubController.buffer_odd_count);
 	if(Raid0SubController.even_priority.file_descriptor != -1){
 		//backup the priority
 		R0_Backup(Raid0SubController.even_priority.file_descriptor,Raid0SubController.even_priority.pagenum);
@@ -105,6 +117,7 @@ void R0_Step(){
 		Raid0SubController.even_priority.file_descriptor = -1;
 		Raid0SubController.even_priority.pagenum = -1;					
 	}else{
+		if(Raid0SubController.buffer_even_count != 0){
 		WriteEntry bf_even = Raid0SubController.buffer_even[Raid0SubController.buffer_even_start];
 		if(bf_even.file_descriptor != -1){
 			//backup the first
@@ -115,7 +128,7 @@ void R0_Step(){
 			Raid0SubController.buffer_even_start = (Raid0SubController.buffer_even_start + 1) % MAX_ARRAY;
 			Raid0SubController.buffer_even_count -= 1;
 		}
-	}
+	}}
 
 	//ODD
 	if(Raid0SubController.odd_priority.file_descriptor != -1){
@@ -125,6 +138,7 @@ void R0_Step(){
 		Raid0SubController.odd_priority.file_descriptor = -1;
 		Raid0SubController.odd_priority.pagenum = -1;					
 	}else{
+		if(Raid0SubController.buffer_odd_count != 0){
 		WriteEntry bf_odd = Raid0SubController.buffer_odd[Raid0SubController.buffer_odd_start];
 		if(bf_odd.file_descriptor != -1){
 			//backup the first
@@ -135,7 +149,7 @@ void R0_Step(){
 			Raid0SubController.buffer_odd_start = (Raid0SubController.buffer_odd_start + 1) % MAX_ARRAY;
 			Raid0SubController.buffer_odd_count -= 1;
 		}
-	}	
+	}}	
 
 	return Raid0SubController.buffer_odd_count + Raid0SubController.buffer_even_count;
 

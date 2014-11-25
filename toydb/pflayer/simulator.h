@@ -2,6 +2,7 @@
 #define SIMULATOR_H
 
 #define MAX_ARRAY 1000
+#define MAX_BUFFER 70
 #include<stdbool.h>
 
 typedef struct input {
@@ -30,6 +31,7 @@ typedef struct System_sim {
 	file file_structure[1000];	//indexed by uid
 	int fd_to_uid[1000];
 	int curr_file[2];
+	bool recovering;
 	//int backup_file[2];
 } System_sim; 
 

@@ -18,6 +18,7 @@ main()
 	int write_count = 0;
 	int max_write_count = 5;
 	
+	log_file = fopen("raid_log.txt","w+");
 	System_sim_constructor(); //Initialise the values
 	R01_Constructor();	//Initialise the RAID 01 Disk
 	R0_Constructor();	//Initialise the RAID 0 Disk
@@ -73,7 +74,8 @@ main()
 	RAIDPF_CloseFile(fd2);
 	printf("Closed File2\n");
 
-	timestep(20);
+	timestep(10
+		log_file = fopen("raid_log.txt","w+");0);
 	R01_Destructor();	//Close the RAID 01 Disk (to flush the log file into raid_log.txt)
 }
 

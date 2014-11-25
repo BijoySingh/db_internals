@@ -228,7 +228,6 @@ int error;
 		PFerrno = PFE_UNIX;
 		return(PFE_UNIX);
 	}
-
 	/* write out the file header */
 	hdr.firstfree = PF_PAGE_LIST_END;	/* no free pag yet */
 	hdr.numpages = 0;
@@ -246,7 +245,6 @@ int error;
 		PFerrno = PFE_UNIX;
 		return(PFerrno);
 	}
-
 	create(fname);
 	return(PFE_OK);
 }
@@ -254,7 +252,7 @@ int error;
 
 PF_DestroyFile(fname)
 char *fname;		/* file name to destroy */
-/****************************************************************************
+/*******2*********************************************************************
 SPECIFICATIONS:
 	Destroy the paged file whose name is "fname". The file should
 	exist, and should not be already open.

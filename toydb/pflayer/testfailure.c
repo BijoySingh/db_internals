@@ -18,6 +18,7 @@ main()
 	int write_count = 0;
 	int max_write_count = 5;
 	
+	log_file = fopen("raid_log.txt","w+");
 	System_sim_constructor(); //Initialise the values
 	R01_Constructor();	//Initialise the RAID 01 Disk
 	R0_Constructor();	//Initialise the RAID 0 Disk
@@ -33,14 +34,20 @@ main()
 	timestep(5);
 
 	writefile(FILE1);
-	readfile(FILE1);
-
 	writefile(FILE2);
-	readfile(FILE2);
 
 	printf("ACTIVATE BACKUP\n");
-	// R01_ActivateBackup();
+	R01_ActivateBackup();
 
+	readfile(FILE1);
+	readfile(FILE1);
+	readfile(FILE2);
+	readfile(FILE2);
+
+	failure();
+	timestep(10);
+	recover();
+	
 	int fd_1,fd_2;
 	/* open both files */
 	fd1=PF_OpenFile(FILE1);
@@ -51,6 +58,8 @@ main()
 	printf("Opened File2\n");
 	timestep(3);
 	
+
+
 	/* 
 		Get rid of records  1,3,5,.... from file 1
 		Get rid of records  0,2,4,.... from file 2
@@ -76,7 +85,7 @@ main()
 	RAIDPF_CloseFile(fd2);
 	printf("Closed File2\n");
 
-	timestep(20);
+	timestep(100);
 	R01_Destructor();	//Close the RAID 01 Disk (to flush the log file into raid_log.txt)
 }
 

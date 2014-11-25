@@ -2,8 +2,8 @@
 
 #define RAID_READ 0
 #define RAID_WRITE 1
-#define BACKUP_THRESHOLD 750
-#define BACKUP_LOWER_THRESHOLD 500
+#define BACKUP_THRESHOLD  (int)MAX_BUFFER*0.8
+#define BACKUP_LOWER_THRESHOLD (int)MAX_BUFFER*0.5
 
 #define DISK_00 0
 #define DISK_01 1
@@ -180,7 +180,7 @@ void R01_PerformInstruction(BufferEntry buffer_entry,int even_or_odd,
 	PERFORM STEP TO DO ALL THE THINGS
 ****************************************************/
 
-void R01_Step(){
+int R01_Step(){
 	fprintf(log_file,"STEP\n");
 	//EVEN
 
@@ -239,7 +239,13 @@ void R01_Step(){
 			R01_PerformBackup(0,DISK_00);
 			R01_PerformBackup(0,DISK_10);
 		}
-	}}
+	}}else{
+		if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
+			printf("BACKUPPP%d\n",Raid01SubController.backup_complete);
+			R01_PerformBackup(0,DISK_00);
+			R01_PerformBackup(0,DISK_10);
+		}
+	}
 
 	//ODD
 	if(Raid01SubController.buffer_odd_count != 0){
@@ -285,7 +291,13 @@ void R01_Step(){
 			R01_PerformBackup(1,DISK_01);
 			R01_PerformBackup(1,DISK_11);
 		}
-	}}
+	}}else{
+		//Send 2 backups
+		if(Raid01SubController.backup_disk_attached && !Raid01SubController.backup_complete){
+			R01_PerformBackup(1,DISK_01);
+			R01_PerformBackup(1,DISK_11);
+		}
+	}
 	return Raid01SubController.buffer_odd_count + Raid01SubController.buffer_even_count;
 }
 
