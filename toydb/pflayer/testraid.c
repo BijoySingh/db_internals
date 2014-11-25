@@ -74,8 +74,7 @@ main()
 	RAIDPF_CloseFile(fd2);
 	printf("Closed File2\n");
 
-	timestep(10
-		log_file = fopen("raid_log.txt","w+");0);
+	timestep(100);
 	R01_Destructor();	//Close the RAID 01 Disk (to flush the log file into raid_log.txt)
 }
 
